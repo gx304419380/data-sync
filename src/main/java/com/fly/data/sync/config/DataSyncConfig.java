@@ -55,7 +55,7 @@ public class DataSyncConfig implements ApplicationContextAware {
             log.warn("- data.sync.scan.package is empty, use default value: {}", scanPackage);
         }
 
-        List<String> tableClassNameList = scanSyncTableClass(scanPackage);
+        List<String> tableClassNameList = scanSyncTableClass();
 
         if (CollectionUtils.isEmpty(tableClassNameList)) {
             log.warn("- table class list is empty, return...");
@@ -86,15 +86,14 @@ public class DataSyncConfig implements ApplicationContextAware {
 
     /**
      * 查找所有需要同步的class
-     * @param scanPackage   扫描路径
      */
-    private List<String> scanSyncTableClass(String scanPackage) {
+    private List<String> scanSyncTableClass() {
 
         log.info("- begin to scan sync table class in package: {}", scanPackage);
 
         ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false); // 不使用默认的TypeFilter
         provider.addIncludeFilter(new AnnotationTypeFilter(SyncTable.class));
-        Set<BeanDefinition> beanDefinitionSet = provider.findCandidateComponents(this.scanPackage);
+        Set<BeanDefinition> beanDefinitionSet = provider.findCandidateComponents(scanPackage);
 
 
         return beanDefinitionSet.stream()
