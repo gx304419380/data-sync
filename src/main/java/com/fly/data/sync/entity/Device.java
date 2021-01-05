@@ -2,7 +2,6 @@ package com.fly.data.sync.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.fly.data.sync.annotation.SyncIgnore;
 import com.fly.data.sync.annotation.SyncTable;
 import lombok.Data;

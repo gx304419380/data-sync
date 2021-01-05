@@ -17,16 +17,16 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.util.CollectionUtils;
 
+import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -35,18 +35,55 @@ import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
 
 @Configuration
 @Slf4j
-public class DataSyncConfig implements ApplicationContextAware {
+public class SyncDataConfig implements ApplicationContextAware {
 
     private ApplicationContext applicationContext;
 
     @Value("${data.sync.scan.package:}")
     private String scanPackage;
 
-    private Map<String, DataModel<?>> MODEL_MAP = new ConcurrentHashMap<>();
+    private static final Map<String, DataModel<?>> MODEL_MAP = new ConcurrentHashMap<>();
 
-    public DataSyncConfig() {
+    private static final List<String> TABLE_LIST = new ArrayList<>();
+
+    public static final CountDownLatch INIT_LATCH = new CountDownLatch(1);
+
+    @SuppressWarnings("unchecked")
+    public static <T> DataModel<T> getDataModel(String tableName) {
+        waitForInit();
+        DataModel<?> dataModel = MODEL_MAP.get(tableName);
+        return (DataModel<T>) dataModel;
     }
 
+
+    public static Map<String, DataModel<?>> getModelMap() {
+        waitForInit();
+        return MODEL_MAP;
+    }
+
+    public static List<String> getTableList() {
+        waitForInit();
+        return TABLE_LIST;
+    }
+
+    /**
+     * 等待初始化完成
+     */
+    private static void waitForInit() {
+        try {
+            INIT_LATCH.await();
+        } catch (InterruptedException e) {
+            log.error("- get model error:", e);
+        }
+    }
+
+
+    /**
+     * 初始化
+     * 1.扫描实体类
+     * 2.解析并获取表名称、字段
+     * 3.包装成数据模型存入缓存
+     */
     @PostConstruct
     public void init() {
 
@@ -63,6 +100,8 @@ public class DataSyncConfig implements ApplicationContextAware {
         }
 
         resolveDataModel(tableClassNameList);
+
+        INIT_LATCH.countDown();
     }
 
 
@@ -112,7 +151,6 @@ public class DataSyncConfig implements ApplicationContextAware {
         log.info("- begin to resolve tableClassList: {}", tableClassNameList);
 
         tableClassNameList.forEach(this::createDataModel);
-
     }
 
 
@@ -156,6 +194,7 @@ public class DataSyncConfig implements ApplicationContextAware {
                 .setFieldNameList(fieldNameList);
 
         MODEL_MAP.put(tableName, model);
+        TABLE_LIST.add(tableName);
 
         log.info("- data model is: {}", model);
     }
@@ -172,16 +211,13 @@ public class DataSyncConfig implements ApplicationContextAware {
 
         String tableName = null;
 
+        // mybatis plus annotation is prior
         if (modelClass.isAnnotationPresent(TableName.class)) {
             TableName tableNameAnnotation = modelClass.getAnnotation(TableName.class);
             tableName = tableNameAnnotation.value();
         }
-
-        if (StringUtils.isNotEmpty(tableName)) {
-            return tableName;
-        }
-
-        if (modelClass.isAnnotationPresent(Table.class)) {
+        // spring data's annotation is checked then
+        else if (modelClass.isAnnotationPresent(Table.class)) {
             Table tableAnnotation = modelClass.getAnnotation(Table.class);
             tableName = tableAnnotation.value();
         }
@@ -190,6 +226,7 @@ public class DataSyncConfig implements ApplicationContextAware {
             return tableName;
         }
 
+        // if there isn't any annotation on the class, use class name as default tableName
         SyncTable syncTable = modelClass.getAnnotation(SyncTable.class);
         tableName = syncTable.value();
 
@@ -215,18 +252,20 @@ public class DataSyncConfig implements ApplicationContextAware {
 
         String fieldName = null;
 
+        //mybatis-plus注解优先
         if (field.isAnnotationPresent(TableField.class)) {
             TableField tableField = field.getAnnotation(TableField.class);
             fieldName = tableField.value();
         }
-
-        if (StringUtils.isNotEmpty(fieldName)) {
-            return fieldName;
-        }
-
-        if (field.isAnnotationPresent(TableId.class)) {
+        //mybatis-plus注解TableId
+        else if (field.isAnnotationPresent(TableId.class)) {
             TableId tableId = field.getAnnotation(TableId.class);
             fieldName = tableId.value();
+        }
+        //spring data注解
+        else if (field.isAnnotationPresent(Column.class)) {
+            Column column = field.getAnnotation(Column.class);
+            fieldName = column.value();
         }
 
         if (StringUtils.isNotEmpty(fieldName)) {
@@ -238,7 +277,7 @@ public class DataSyncConfig implements ApplicationContextAware {
 
 
     @Override
-    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+    public void setApplicationContext(@Nonnull ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
     }
 }
