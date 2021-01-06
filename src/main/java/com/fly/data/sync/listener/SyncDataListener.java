@@ -8,7 +8,6 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.listener.MessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.Lifecycle;
 import org.springframework.context.event.EventListener;
@@ -22,14 +21,15 @@ import java.util.List;
 @Slf4j
 public class SyncDataListener {
 
-    private final SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory;
+    private final SimpleRabbitListenerContainerFactory containerFactory;
 
     private final SyncDataService syncDataService;
 
     private final List<MessageListenerContainer> messageListenerContainerList = new ArrayList<>();
 
-    public SyncDataListener(@Qualifier("rabbitListenerContainerFactory") SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory, SyncDataService syncDataService) {
-        this.rabbitListenerContainerFactory = rabbitListenerContainerFactory;
+    public SyncDataListener(SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory,
+                            SyncDataService syncDataService) {
+        this.containerFactory = rabbitListenerContainerFactory;
         this.syncDataService = syncDataService;
     }
 
@@ -72,7 +72,7 @@ public class SyncDataListener {
     private <T> void createMessageListener(DataModel<T> dataModel) {
         log.info("- create message listener for model: {}", dataModel.getTable());
 
-        SimpleMessageListenerContainer container = rabbitListenerContainerFactory.createListenerContainer();
+        SimpleMessageListenerContainer container = containerFactory.createListenerContainer();
 
         container.setQueueNames("test.queue");
         container.setMessageListener(message -> handleMessage(dataModel, message));
