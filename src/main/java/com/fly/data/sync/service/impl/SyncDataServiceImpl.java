@@ -1,6 +1,7 @@
 package com.fly.data.sync.service.impl;
 
 import com.fly.data.sync.annotation.SyncLock;
+import com.fly.data.sync.config.SyncDataConfig;
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.service.SyncDataService;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ public class SyncDataServiceImpl implements SyncDataService {
      */
     @Override
     @SyncLock
-    public <T> void syncAll(DataModel<T> model) {
+    public <T> void syncTotal(DataModel<T> model) {
         log.info("- sync all data for model: {}", model.getTable());
 
         //获取总数

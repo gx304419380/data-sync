@@ -9,18 +9,24 @@ import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFacto
 import org.springframework.amqp.rabbit.listener.MessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.Lifecycle;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import javax.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.fly.data.sync.config.SyncDataConfig.getDataModel;
+
 @Component
 @Slf4j
 public class SyncDataListener {
+
+    private final ApplicationEventPublisher publisher;
 
     private final SimpleRabbitListenerContainerFactory containerFactory;
 
@@ -28,15 +34,18 @@ public class SyncDataListener {
 
     private final List<MessageListenerContainer> messageListenerContainerList = new ArrayList<>();
 
-    public SyncDataListener(SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory, SyncDataService syncDataService) {
+    public SyncDataListener(SyncDataService syncDataService,
+                            ApplicationEventPublisher publisher,
+                            SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory) {
+
         this.containerFactory = rabbitListenerContainerFactory;
         this.syncDataService = syncDataService;
+        this.publisher = publisher;
     }
 
     @EventListener(ApplicationReadyEvent.class)
-    public void syncData() {
-        log.info("- begin to sync data...");
-
+    public void onApplicationReadyForSync() {
+        log.info("- on ApplicationReadyEvent for sync data...");
         List<String> tableList = SyncDataConfig.getTableList();
 
         if (tableList.isEmpty()) {
@@ -44,33 +53,57 @@ public class SyncDataListener {
             return;
         }
 
-        tableList.forEach(this::syncDataForTable);
+        //创建消息监听器
+        tableList.forEach(this::createMessageListener);
+
+        //全量同步数据
+        publisher.publishEvent(new SyncAllEvent());
     }
 
 
     /**
-     * 同步指定表的数据
-     *
-     * @param tableName 表名称
+     * 同步所有的表
+     * @param event     事件
      */
-    private <T> void syncDataForTable(String tableName) {
-        log.info("- begin to sync data for table: {}", tableName);
+    @TransactionalEventListener(fallbackExecution = true)
+    public void onSyncAllEvent(SyncAllEvent event) {
+        log.info("- on SyncAllEvent...");
 
-        DataModel<T> dataModel = SyncDataConfig.getDataModel(tableName);
+        List<String> tableList = SyncDataConfig.getTableList();
 
-        createMessageListener(dataModel);
+        tableList.stream()
+                .map(SyncDataConfig::getDataModel)
+                .forEach(syncDataService::syncTotal);
 
-        syncDataService.syncAll(dataModel);
+        log.info("- finish SyncAllEvent...");
+    }
+
+
+    /**
+     * 监听单个数据模型事件
+     *
+     * @param event     事件
+     */
+    @TransactionalEventListener(fallbackExecution = true)
+    public <T> void onSyncEvent(SyncEvent<T> event) {
+        DataModel<T> dataModel = event.getDataModel();
+        log.info("- on SyncEvent for model: {}", dataModel.getTable());
+
+        syncDataService.syncTotal(dataModel);
+
+        log.info("- finish SyncEvent for model: {}", dataModel.getTable());
     }
 
 
     /**
      * 创建消息监听器
      *
-     * @param dataModel     数据模型
+     * @param tableName     数据表名
      */
-    private <T> void createMessageListener(DataModel<T> dataModel) {
-        log.info("- create message listener for model: {}", dataModel.getTable());
+    private <T> void createMessageListener(String tableName) {
+        log.info("- create message listener for model: {}", tableName);
+
+        DataModel<T> dataModel = getDataModel(tableName);
 
         SimpleMessageListenerContainer container = containerFactory.createListenerContainer();
 
