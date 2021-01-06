@@ -40,9 +40,7 @@ public class SyncDataServiceImpl implements SyncDataService {
 
         //需要分批次：防止数据量过大内存溢出
         for (int i = 1; i <= totalPage; i++) {
-            //获取数据 Extract&Transform
             List<T> dataList = extractAndTransform(model, i, PAGE_SIZE);
-            //加载到数据库 Load
             load(dataList, model);
         }
 
