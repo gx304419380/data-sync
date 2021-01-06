@@ -14,6 +14,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PreDestroy;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,8 +28,7 @@ public class SyncDataListener {
 
     private final List<MessageListenerContainer> messageListenerContainerList = new ArrayList<>();
 
-    public SyncDataListener(SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory,
-                            SyncDataService syncDataService) {
+    public SyncDataListener(SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory, SyncDataService syncDataService) {
         this.containerFactory = rabbitListenerContainerFactory;
         this.syncDataService = syncDataService;
     }
@@ -89,8 +89,12 @@ public class SyncDataListener {
      * @param message       消息
      */
     private <T> void handleMessage(DataModel<T> dataModel, Message message) {
-        log.info("- receive message, model: {}, message: {}", dataModel.getTable(), message.getBody());
-        syncDataService.syncDelta(dataModel, message);
+        byte[] body = message.getBody();
+        log.info("- receive message, model: {}, message: {}", dataModel.getTable(), body);
+
+        String json = new String(body, StandardCharsets.UTF_8);
+
+        syncDataService.syncDelta(dataModel, json);
     }
 
 

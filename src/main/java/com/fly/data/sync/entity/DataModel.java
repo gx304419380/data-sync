@@ -6,6 +6,7 @@ import lombok.experimental.Accessors;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Data
 @Accessors(chain = true)
@@ -13,6 +14,8 @@ import java.util.List;
 public class DataModel<T> {
 
     private Class<T> modelClass;
+
+    private final ReentrantLock dataLock = new ReentrantLock();
 
     private String table;
 
