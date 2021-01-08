@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.fly.data.sync.config.SyncDataConfig.getDataModel;
+import static com.fly.data.sync.listener.SyncEventSource.APPLICATION_START;
 
 @Component
 @Slf4j
@@ -34,15 +35,21 @@ public class SyncDataListener {
 
     private final List<MessageListenerContainer> messageListenerContainerList = new ArrayList<>();
 
+
+
     public SyncDataListener(SyncDataService syncDataService,
                             ApplicationEventPublisher publisher,
-                            SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory) {
+                            SimpleRabbitListenerContainerFactory containerFactory) {
 
-        this.containerFactory = rabbitListenerContainerFactory;
+        this.containerFactory = containerFactory;
         this.syncDataService = syncDataService;
         this.publisher = publisher;
     }
 
+
+    /**
+     * 项目启动监听器，用于创建mq listener和启动同步
+     */
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReadyForSync() {
         log.info("- on ApplicationReadyEvent for sync data...");
@@ -57,7 +64,7 @@ public class SyncDataListener {
         tableList.forEach(this::createMessageListener);
 
         //全量同步数据
-        publisher.publishEvent(new SyncAllEvent());
+        publisher.publishEvent(new SyncAllEvent(APPLICATION_START));
     }
 
 
@@ -67,7 +74,7 @@ public class SyncDataListener {
      */
     @TransactionalEventListener(fallbackExecution = true)
     public void onSyncAllEvent(SyncAllEvent event) {
-        log.info("- on SyncAllEvent...");
+        log.info("- on SyncAllEvent: {}", event);
 
         List<String> tableList = SyncDataConfig.getTableList();
 

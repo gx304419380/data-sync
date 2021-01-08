@@ -9,4 +9,10 @@ import lombok.Data;
  */
 @Data
 public class SyncAllEvent {
+
+    private SyncEventSource source;
+
+    public SyncAllEvent(SyncEventSource source) {
+        this.source = source;
+    }
 }

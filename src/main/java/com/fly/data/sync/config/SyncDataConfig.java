@@ -188,10 +188,10 @@ public class SyncDataConfig implements ApplicationContextAware {
 
         DataModel<T> model = new DataModel<>();
         model.setModelClass(modelClass)
-                .setTable(tableName)
-                .setId(idName)
                 .setFieldList(Arrays.asList(fields))
-                .setFieldNameList(fieldNameList);
+                .setFieldNameList(fieldNameList)
+                .setTable(tableName)
+                .setId(idName);
 
         MODEL_MAP.put(tableName, model);
         TABLE_LIST.add(tableName);

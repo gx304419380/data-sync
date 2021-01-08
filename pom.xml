@@ -44,12 +44,19 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+        <!-- common包 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>3.11</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.4</version>
+        </dependency>
+
 
         <!-- https://mvnrepository.com/artifact/com.baomidou/mybatis-plus-annotation -->
         <dependency>

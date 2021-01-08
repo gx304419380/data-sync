@@ -10,6 +10,10 @@ import static com.google.common.base.CaseFormat.*;
  * @since   20210101
  */
 public class StringConverter {
+
+    private StringConverter() {
+    }
+
     //大写驼峰转下划线
     public static Converter<String, String> UPPER_CAMEL_UNDERSCORE =
             UPPER_CAMEL.converterTo(LOWER_UNDERSCORE);
