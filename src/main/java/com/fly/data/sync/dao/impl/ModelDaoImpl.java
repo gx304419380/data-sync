@@ -3,7 +3,6 @@ package com.fly.data.sync.dao.impl;
 import com.fly.data.sync.dao.ModelDao;
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.UpdateData;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
@@ -32,10 +31,9 @@ public class ModelDaoImpl implements ModelDao {
     @Override
     public <T> void loadToTemp(List<T> dataList, DataModel<T> model) {
 
-        String insertSql = "";
+        String insertSql = "insert into ${table} (${fieldList}) values (${propertyList})";
 
         namedJdbcTemplate.batchUpdate(insertSql, SqlParameterSourceUtils.createBatch(dataList));
-
     }
 
     @Override
@@ -50,6 +48,8 @@ public class ModelDaoImpl implements ModelDao {
                 "left join ${table} b on a.${id} = b.${id} " +
                 "where b.${id} is null";
 
+        queryAddSql = parseSql(queryAddSql, model);
+        addSql = parseSql(addSql, model);
 
         List<T> addList = jdbcTemplate.query(queryAddSql, model.getRowMapper());
         jdbcTemplate.update(addSql);
@@ -97,6 +97,7 @@ public class ModelDaoImpl implements ModelDao {
                 .replace("${id}", model.getId())
                 .replace("${fieldList}", model.getFieldNameListString())
                 .replace("${a.fieldList}", model.getFieldNameListStringWithPrefix("a"))
-                .replace("${b.fieldList}", model.getFieldNameListStringWithPrefix("b"));
+                .replace("${b.fieldList}", model.getFieldNameListStringWithPrefix("b"))
+                .replace("${propertyList}", model.getPropertyNameString());
     }
 }

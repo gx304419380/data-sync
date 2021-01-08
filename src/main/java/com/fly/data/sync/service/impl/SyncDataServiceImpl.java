@@ -10,7 +10,6 @@ import com.fly.data.sync.listener.DataUpdateEvent;
 import com.fly.data.sync.service.SyncDataService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -23,11 +22,14 @@ public class SyncDataServiceImpl implements SyncDataService {
     
     private static final int PAGE_SIZE = 1000;
 
-    @Autowired
-    private ModelDao modelDao;
+    private final ModelDao modelDao;
 
-    @Autowired
-    private ApplicationEventPublisher publisher;
+    private final ApplicationEventPublisher publisher;
+
+    public SyncDataServiceImpl(ModelDao modelDao, ApplicationEventPublisher publisher) {
+        this.modelDao = modelDao;
+        this.publisher = publisher;
+    }
 
 
     /**

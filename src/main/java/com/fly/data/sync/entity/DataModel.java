@@ -1,20 +1,31 @@
 package com.fly.data.sync.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.fly.data.sync.annotation.SyncIgnore;
+import com.fly.data.sync.annotation.SyncTable;
 import lombok.Data;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static com.fly.data.sync.util.StringConverter.LOWER_CAMEL_UNDERSCORE;
+import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
 import static java.util.stream.Collectors.toList;
 
 @Data
 @Accessors(chain = true)
-@ToString(exclude = "fieldList")
+@ToString(exclude = {"fieldList", "rowMapper"})
 public class DataModel<T> {
 
     private Class<T> modelClass;
@@ -31,27 +42,46 @@ public class DataModel<T> {
 
     private String fieldNameListString;
 
-    private List<String> propertyNameList;
+    private String propertyNameString;
 
     private BeanPropertyRowMapper<T> rowMapper;
 
-    public DataModel<T> setModelClass(Class<T> modelClass) {
-        this.modelClass = modelClass;
-        this.rowMapper = new BeanPropertyRowMapper<>(modelClass);
-        return this;
-    }
 
-    public DataModel<T> setFieldNameList(List<String> fieldNameList) {
-        this.fieldNameList = fieldNameList;
-        this.fieldNameListString = String.join(",", fieldNameList);
-        return this;
-    }
+    public DataModel(Class<T> modelClass) {
 
-    public DataModel<T> setFieldList(List<Field> fieldList) {
+        String tableName = resolveTableName(modelClass);
+
+        Field[] fields = modelClass.getDeclaredFields();
+
+        List<Field> fieldList = Stream.of(fields)
+                .filter(this::checkField)
+                .collect(Collectors.toList());
+
+        String idName = fieldList.stream()
+                .filter(f -> f.isAnnotationPresent(TableId.class))
+                .map(this::resolveTableField)
+                .findFirst()
+                .orElse(null);
+
+        List<String> fieldNameList = fieldList.stream()
+                .map(this::resolveTableField)
+                .filter(StringUtils::isNotEmpty)
+                .collect(Collectors.toList());
+
+        List<String> propertyList = fieldList.stream()
+                .map(Field::getName)
+                .collect(toList());
+
+        this.id = idName;
+        this.table = tableName;
         this.fieldList = fieldList;
-        this.propertyNameList = fieldList.stream().map(Field::getName).collect(toList());
-        return this;
+        this.modelClass = modelClass;
+        this.fieldNameList = fieldNameList;
+        this.rowMapper = new BeanPropertyRowMapper<>(modelClass);
+        this.fieldNameListString = String.join(",", fieldNameList);
+        this.propertyNameString = ":" + String.join(",:", propertyList);
     }
+
 
     public String getFieldNameListStringWithPrefix(String prefix) {
         return prefix + "." + String.join("," + prefix + ".", fieldNameList);
@@ -59,5 +89,85 @@ public class DataModel<T> {
 
     public String getTempTable() {
         return table + "_temp";
+    }
+
+
+    private boolean checkField(Field field) {
+        return !field.isAnnotationPresent(SyncIgnore.class);
+    }
+
+
+    /**
+     * 解析表名称
+     *
+     * @param modelClass    模型类
+     * @return              表名称
+     */
+    private String resolveTableName(Class<T> modelClass) {
+
+        String tableName = null;
+
+        // mybatis plus annotation is prior
+        if (modelClass.isAnnotationPresent(TableName.class)) {
+            TableName tableNameAnnotation = modelClass.getAnnotation(TableName.class);
+            tableName = tableNameAnnotation.value();
+        }
+        // spring data's annotation is checked then
+        else if (modelClass.isAnnotationPresent(Table.class)) {
+            Table tableAnnotation = modelClass.getAnnotation(Table.class);
+            tableName = tableAnnotation.value();
+        }
+
+        if (StringUtils.isNotEmpty(tableName)) {
+            return tableName;
+        }
+
+        // if there isn't any annotation on the class, use class name as default tableName
+        SyncTable syncTable = modelClass.getAnnotation(SyncTable.class);
+        tableName = syncTable.value();
+
+        if (StringUtils.isNotEmpty(tableName)) {
+            return tableName;
+        }
+
+        return UPPER_CAMEL_UNDERSCORE.convert(modelClass.getSimpleName());
+    }
+
+
+    /**
+     * 解析字段名称
+     *
+     * @param field     模型字段
+     * @return          对应的表字段
+     */
+    private String resolveTableField(Field field) {
+
+        if (field.isAnnotationPresent(SyncIgnore.class)) {
+            return null;
+        }
+
+        String fieldName = null;
+
+        //mybatis-plus注解优先
+        if (field.isAnnotationPresent(TableField.class)) {
+            TableField tableField = field.getAnnotation(TableField.class);
+            fieldName = tableField.value();
+        }
+        //mybatis-plus注解TableId
+        else if (field.isAnnotationPresent(TableId.class)) {
+            TableId tableId = field.getAnnotation(TableId.class);
+            fieldName = tableId.value();
+        }
+        //spring data注解
+        else if (field.isAnnotationPresent(Column.class)) {
+            Column column = field.getAnnotation(Column.class);
+            fieldName = column.value();
+        }
+
+        if (StringUtils.isNotEmpty(fieldName)) {
+            return fieldName;
+        }
+
+        return LOWER_CAMEL_UNDERSCORE.convert(field.getName());
     }
 }

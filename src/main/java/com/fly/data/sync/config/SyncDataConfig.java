@@ -171,109 +171,14 @@ public class SyncDataConfig implements ApplicationContextAware {
             throw new RuntimeException(e);
         }
 
-        String tableName = resolveTableName(modelClass);
+        DataModel<T> model = new DataModel<>(modelClass);
 
-        Field[] fields = modelClass.getDeclaredFields();
-
-        String idName = Stream.of(fields)
-                .filter(f -> f.isAnnotationPresent(TableId.class))
-                .map(this::resolveTableField)
-                .findFirst()
-                .orElse(null);
-
-        List<String> fieldNameList = Stream.of(fields)
-                .map(this::resolveTableField)
-                .filter(StringUtils::isNotEmpty)
-                .collect(Collectors.toList());
-
-        DataModel<T> model = new DataModel<>();
-        model.setModelClass(modelClass)
-                .setFieldList(Arrays.asList(fields))
-                .setFieldNameList(fieldNameList)
-                .setTable(tableName)
-                .setId(idName);
-
-        MODEL_MAP.put(tableName, model);
-        TABLE_LIST.add(tableName);
+        MODEL_MAP.put(model.getTable(), model);
+        TABLE_LIST.add(model.getTable());
 
         log.info("- data model is: {}", model);
     }
 
-
-
-    /**
-     * 解析表名称
-     *
-     * @param modelClass    模型类
-     * @return              表名称
-     */
-    private <T> String resolveTableName(Class<T> modelClass) {
-
-        String tableName = null;
-
-        // mybatis plus annotation is prior
-        if (modelClass.isAnnotationPresent(TableName.class)) {
-            TableName tableNameAnnotation = modelClass.getAnnotation(TableName.class);
-            tableName = tableNameAnnotation.value();
-        }
-        // spring data's annotation is checked then
-        else if (modelClass.isAnnotationPresent(Table.class)) {
-            Table tableAnnotation = modelClass.getAnnotation(Table.class);
-            tableName = tableAnnotation.value();
-        }
-
-        if (StringUtils.isNotEmpty(tableName)) {
-            return tableName;
-        }
-
-        // if there isn't any annotation on the class, use class name as default tableName
-        SyncTable syncTable = modelClass.getAnnotation(SyncTable.class);
-        tableName = syncTable.value();
-
-        if (StringUtils.isNotEmpty(tableName)) {
-            return tableName;
-        }
-
-        return UPPER_CAMEL_UNDERSCORE.convert(modelClass.getSimpleName());
-    }
-
-
-    /**
-     * 解析字段名称
-     *
-     * @param field     模型字段
-     * @return          对应的表字段
-     */
-    private String resolveTableField(Field field) {
-
-        if (field.isAnnotationPresent(SyncIgnore.class)) {
-            return null;
-        }
-
-        String fieldName = null;
-
-        //mybatis-plus注解优先
-        if (field.isAnnotationPresent(TableField.class)) {
-            TableField tableField = field.getAnnotation(TableField.class);
-            fieldName = tableField.value();
-        }
-        //mybatis-plus注解TableId
-        else if (field.isAnnotationPresent(TableId.class)) {
-            TableId tableId = field.getAnnotation(TableId.class);
-            fieldName = tableId.value();
-        }
-        //spring data注解
-        else if (field.isAnnotationPresent(Column.class)) {
-            Column column = field.getAnnotation(Column.class);
-            fieldName = column.value();
-        }
-
-        if (StringUtils.isNotEmpty(fieldName)) {
-            return fieldName;
-        }
-
-        return LOWER_CAMEL_UNDERSCORE.convert(field.getName());
-    }
 
 
     @Override
