@@ -31,7 +31,9 @@ public class ModelDaoImpl implements ModelDao {
     @Override
     public <T> void loadToTemp(List<T> dataList, DataModel<T> model) {
 
-        String insertSql = "insert into ${table} (${fieldList}) values (${propertyList})";
+        String insertSql = "insert into ${tempTable} (${fieldList}) values (${propertyList})";
+
+        insertSql = parseSql(insertSql, model);
 
         namedJdbcTemplate.batchUpdate(insertSql, SqlParameterSourceUtils.createBatch(dataList));
     }
@@ -43,7 +45,7 @@ public class ModelDaoImpl implements ModelDao {
                 "left join ${table} b on a.${id} = b.${id} " +
                 "where b.${id} is null";
 
-        String addSql = "insert into ${table} (${a.fieldList}) " +
+        String addSql = "insert into ${table} (${fieldList}) " +
                 "select ${a.fieldList} from ${tempTable} a " +
                 "left join ${table} b on a.${id} = b.${id} " +
                 "where b.${id} is null";
@@ -57,9 +59,32 @@ public class ModelDaoImpl implements ModelDao {
         return addList;
     }
 
+
     @Override
     public <T> UpdateData<T> update(DataModel<T> model) {
-        return null;
+
+        String queryUpdateSql = "select ${a.fieldList} from ${tempTable} a " +
+                "left join ${table} b on a.${id} = b.${id} " +
+                "where a.${updateTime} > b.${updateTime}";
+
+        String queryOldSql = "select ${b.fieldList} from ${tempTable} a " +
+                "left join ${table} b on a.${id} = b.${id} " +
+                "where a.${updateTime} > b.${updateTime}";
+
+        String updateSql = "update ${table}, ${tempTable} " +
+                "set ${updateField}=${updateField} " +
+                "where ${table}.${id} = ${tempTable}.${id} " +
+                "and ${table}.${updateTime} < ${tempTable}.${updateTime}";
+
+        queryUpdateSql = parseSql(queryUpdateSql, model);
+        queryOldSql = parseSql(queryOldSql, model);
+        updateSql = parseSql(updateSql, model);
+
+        List<T> updateList = jdbcTemplate.query(queryUpdateSql, model.getRowMapper());
+        List<T> oldList = jdbcTemplate.query(queryOldSql, model.getRowMapper());
+        jdbcTemplate.update(updateSql);
+
+        return new UpdateData<>(updateList, oldList);
     }
 
 
@@ -78,7 +103,7 @@ public class ModelDaoImpl implements ModelDao {
 
         deleteSql = parseSql(deleteSql, model);
 
-        List<T> deleteList = jdbcTemplate.queryForList(queryDeleteSql, model.getModelClass());
+        List<T> deleteList = jdbcTemplate.query(queryDeleteSql, model.getRowMapper());
 
         jdbcTemplate.update(deleteSql);
 
@@ -91,13 +116,22 @@ public class ModelDaoImpl implements ModelDao {
         jdbcTemplate.execute("truncate " + model.getTempTable());
     }
 
+
+    @Override
+    public void createTempTableIfNotExist(String table) {
+        String sql = "create table if not exists " + table +"_temp like " + table;
+        jdbcTemplate.execute(sql);
+    }
+
     private <T> String parseSql(String sql, DataModel<T> model) {
-        return sql.replace("${table}", model.getTable())
+        return sql.replace("${id}", model.getId())
+                .replace("${table}", model.getTable())
                 .replace("${tempTable}", model.getTempTable())
-                .replace("${id}", model.getId())
+                .replace("${updateTime}", model.getUpdateTime())
                 .replace("${fieldList}", model.getFieldNameListString())
+                .replace("${propertyList}", model.getPropertyNameString())
                 .replace("${a.fieldList}", model.getFieldNameListStringWithPrefix("a"))
                 .replace("${b.fieldList}", model.getFieldNameListStringWithPrefix("b"))
-                .replace("${propertyList}", model.getPropertyNameString());
+                .replace("${updateField}=${updateField}", model.getUpdateFieldString());
     }
 }

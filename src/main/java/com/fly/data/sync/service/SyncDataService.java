@@ -7,4 +7,6 @@ public interface SyncDataService {
     <T> void syncTotal(DataModel<T> model);
 
     <T> void syncDelta(DataModel<T> model, String message);
+
+    void createTempTableIfNotExist(String table);
 }

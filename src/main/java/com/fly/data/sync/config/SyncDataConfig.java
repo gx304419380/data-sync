@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Nonnull;
@@ -35,6 +36,7 @@ import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
 
 @Configuration
 @Slf4j
+@EnableAsync
 public class SyncDataConfig implements ApplicationContextAware {
 
     private ApplicationContext applicationContext;

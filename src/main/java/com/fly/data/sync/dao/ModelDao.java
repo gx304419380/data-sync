@@ -20,4 +20,6 @@ public interface ModelDao {
     <T> List<T> delete(DataModel<T> model);
 
     <T> void truncateTemp(DataModel<T> model);
+
+    void createTempTableIfNotExist(String table);
 }

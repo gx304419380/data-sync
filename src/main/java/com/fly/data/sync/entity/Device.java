@@ -7,18 +7,18 @@ import com.fly.data.sync.annotation.SyncTable;
 import lombok.Data;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.LocalDateTime;
+
 @SyncTable
 @Data
 @Table("tb_device")
 public class Device {
-    @TableId("device_id")
-    private String id;
+    private Long id;
     private String type;
     private String ip;
-    @SyncIgnore
-    private Integer testIgnore;
-
-    @TableField("test_anno")
-    private String testAnno;
+    private Integer port;
+    private String name;
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 
 }

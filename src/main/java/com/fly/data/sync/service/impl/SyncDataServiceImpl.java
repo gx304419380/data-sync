@@ -1,8 +1,11 @@
 package com.fly.data.sync.service.impl;
 
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fly.data.sync.annotation.SyncLock;
 import com.fly.data.sync.dao.ModelDao;
 import com.fly.data.sync.entity.DataModel;
+import com.fly.data.sync.entity.Device;
 import com.fly.data.sync.entity.UpdateData;
 import com.fly.data.sync.listener.DataAddEvent;
 import com.fly.data.sync.listener.DataDeleteEvent;
@@ -10,11 +13,17 @@ import com.fly.data.sync.listener.DataUpdateEvent;
 import com.fly.data.sync.service.SyncDataService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -26,9 +35,14 @@ public class SyncDataServiceImpl implements SyncDataService {
 
     private final ApplicationEventPublisher publisher;
 
-    public SyncDataServiceImpl(ModelDao modelDao, ApplicationEventPublisher publisher) {
+    private final RestTemplate restTemplate;
+
+    public SyncDataServiceImpl(ModelDao modelDao,
+                               RestTemplate restTemplate,
+                               ApplicationEventPublisher publisher) {
         this.modelDao = modelDao;
         this.publisher = publisher;
+        this.restTemplate = restTemplate;
     }
 
 
@@ -86,13 +100,49 @@ public class SyncDataServiceImpl implements SyncDataService {
     }
 
 
+    /**
+     * 创建临时表
+     * @param table     原表
+     */
+    @Override
+    public void createTempTableIfNotExist(String table) {
+        log.info("- create temp table for {} if not exists", table);
+
+        modelDao.createTempTableIfNotExist(table);
+
+        log.info("- finish create temp table...");
+    }
+
+
+    /**
+     * rest调用分页查询数据，并转为entity
+     *
+     * @param model     模型
+     * @param page      页码
+     * @param size      分页大小
+     * @return          查询结果
+     */
     private <T> List<T> extractAndTransform(DataModel<T> model, long page, long size) {
         // TODO: 2021/1/6 数据查询并转换为pojo
+        String url = "http://localhost:8091/device/page?page={1}&size={2}";
 
+        ParameterizedTypeReference<List<T>> reference = getReference(model.getModelClass());
+        ResponseEntity<List<T>> responseEntity =
+                restTemplate.exchange(url, HttpMethod.GET, null, reference, page, size);
 
+        List<T> body = responseEntity.getBody();
 
+        return body;
+    }
 
-        return Collections.emptyList();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    private <T> ParameterizedTypeReference<List<T>> getReference(Class<T> clazz) {
+
+        //objectMapper已经缓存Type，不需要额外缓存
+        JavaType javaType = objectMapper.getTypeFactory().constructParametricType(List.class, clazz);
+
+        return ParameterizedTypeReference.forType(javaType);
     }
 
 
@@ -137,16 +187,19 @@ public class SyncDataServiceImpl implements SyncDataService {
         //发射数据变更事件
         if (CollectionUtils.isNotEmpty(addList)) {
             log.info("- publish data add event, size = {}", addList.size());
+            log.debug("- == data = {}", addList);
             publisher.publishEvent(new DataAddEvent<>(addList, model));
         }
 
         if (CollectionUtils.isNotEmpty(deleteList)) {
             log.info("- publish data delete event, size = {}", deleteList.size());
+            log.debug("- == data = {}", deleteList);
             publisher.publishEvent(new DataDeleteEvent<>(deleteList, model));
         }
 
         if (updateData.isNotEmpty()) {
             log.info("- publish data update event, size = {}", updateData.size());
+            log.debug("- == data = {}", updateData);
             publisher.publishEvent(new DataUpdateEvent<>(updateData, model));
         }
     }
@@ -155,8 +208,14 @@ public class SyncDataServiceImpl implements SyncDataService {
 
     private <T> long getCount(DataModel<T> model) {
         // TODO: 2021/1/6 查询数据个数
+        String url = "http://localhost:8091/device/count";
+        ResponseEntity<Long> responseEntity = restTemplate.getForEntity(url, Long.class);
 
+        Long body = responseEntity.getBody();
+        if (Objects.isNull(body)) {
+            throw new RuntimeException("count is null");
+        }
 
-        return 0;
+        return body;
     }
 }

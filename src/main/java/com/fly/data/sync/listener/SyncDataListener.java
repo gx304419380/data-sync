@@ -12,6 +12,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.Lifecycle;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -51,6 +52,7 @@ public class SyncDataListener {
      * 项目启动监听器，用于创建mq listener和启动同步
      */
     @EventListener(ApplicationReadyEvent.class)
+    @Async
     public void onApplicationReadyForSync() {
         log.info("- on ApplicationReadyEvent for sync data...");
         List<String> tableList = SyncDataConfig.getTableList();
@@ -63,9 +65,13 @@ public class SyncDataListener {
         //创建消息监听器
         tableList.forEach(this::createMessageListener);
 
+        //创建临时表
+        tableList.forEach(this::createTempTable);
+
         //全量同步数据
         publisher.publishEvent(new SyncAllEvent(APPLICATION_START));
     }
+
 
 
     /**
@@ -135,6 +141,16 @@ public class SyncDataListener {
         String json = new String(body, StandardCharsets.UTF_8);
 
         syncDataService.syncDelta(dataModel, json);
+    }
+
+
+    /**
+     * 创建临时表
+     *
+     * @param tableName 原始表名称
+     */
+    private void createTempTable(String table) {
+        syncDataService.createTempTableIfNotExist(table);
     }
 
 

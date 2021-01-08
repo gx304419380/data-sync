@@ -12,7 +12,7 @@ import lombok.Data;
  * @since 2021/1/6
  */
 @TableName("encode_device")
-@SyncTable
+//@SyncTable
 @Data
 public class EncodeDevice {
 

@@ -3,6 +3,7 @@ package com.fly.data.sync.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fly.data.sync.annotation.SyncUpdateTime;
 import com.fly.data.sync.annotation.SyncIgnore;
 import com.fly.data.sync.annotation.SyncTable;
 import lombok.Data;
@@ -19,6 +20,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.fly.data.sync.constant.SyncConstant.*;
 import static com.fly.data.sync.util.StringConverter.LOWER_CAMEL_UNDERSCORE;
 import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
 import static java.util.stream.Collectors.toList;
@@ -34,7 +36,11 @@ public class DataModel<T> {
 
     private String table;
 
+    private String tempTable;
+
     private String id;
+
+    private String updateTime;
 
     private List<Field> fieldList;
 
@@ -43,6 +49,8 @@ public class DataModel<T> {
     private String fieldNameListString;
 
     private String propertyNameString;
+
+    private String updateFieldString;
 
     private BeanPropertyRowMapper<T> rowMapper;
 
@@ -61,7 +69,13 @@ public class DataModel<T> {
                 .filter(f -> f.isAnnotationPresent(TableId.class))
                 .map(this::resolveTableField)
                 .findFirst()
-                .orElse(null);
+                .orElse(ID_FIELD);
+
+        String updateTime = fieldList.stream()
+                .filter(f -> f.isAnnotationPresent(SyncUpdateTime.class))
+                .map(this::resolveTableField)
+                .findFirst()
+                .orElse(UPDATE_TIME_FIELD);
 
         List<String> fieldNameList = fieldList.stream()
                 .map(this::resolveTableField)
@@ -74,21 +88,23 @@ public class DataModel<T> {
 
         this.id = idName;
         this.table = tableName;
+        this.tempTable = tableName + TEMP_SUFFIX;
+        this.updateTime = updateTime;
         this.fieldList = fieldList;
         this.modelClass = modelClass;
         this.fieldNameList = fieldNameList;
         this.rowMapper = new BeanPropertyRowMapper<>(modelClass);
         this.fieldNameListString = String.join(",", fieldNameList);
         this.propertyNameString = ":" + String.join(",:", propertyList);
+        this.updateFieldString = fieldNameList.stream()
+                .filter(name -> !name.equals(id))
+                .map(name -> table + "." + name + "=" + tempTable + "." + name)
+                .collect(Collectors.joining(",", " ", " "));
     }
 
 
     public String getFieldNameListStringWithPrefix(String prefix) {
         return prefix + "." + String.join("," + prefix + ".", fieldNameList);
-    }
-
-    public String getTempTable() {
-        return table + "_temp";
     }
 
 
@@ -170,4 +186,5 @@ public class DataModel<T> {
 
         return LOWER_CAMEL_UNDERSCORE.convert(field.getName());
     }
+
 }
