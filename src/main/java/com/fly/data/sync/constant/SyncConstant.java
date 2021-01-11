@@ -7,9 +7,7 @@ package com.fly.data.sync.constant;
  */
 public interface SyncConstant {
     String UPDATE_TIME_FIELD = "update_time";
-    String CREATE_TIME_PROPERTY = "updateTime";
     String ID_FIELD = "id";
-    String ID_PROPERTY = "id";
-
     String TEMP_SUFFIX = "_temp";
+
 }

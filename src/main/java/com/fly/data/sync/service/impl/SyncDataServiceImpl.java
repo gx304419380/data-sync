@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fly.data.sync.annotation.SyncLock;
 import com.fly.data.sync.dao.ModelDao;
 import com.fly.data.sync.entity.DataModel;
-import com.fly.data.sync.entity.Device;
+import com.fly.data.sync.entity.PageDto;
 import com.fly.data.sync.entity.UpdateData;
 import com.fly.data.sync.listener.DataAddEvent;
 import com.fly.data.sync.listener.DataDeleteEvent;
@@ -13,7 +13,7 @@ import com.fly.data.sync.listener.DataUpdateEvent;
 import com.fly.data.sync.service.SyncDataService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
@@ -21,15 +21,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @Slf4j
 public class SyncDataServiceImpl implements SyncDataService {
-    
-    private static final int PAGE_SIZE = 1000;
+
+    @Value("${sync.data.page.size:100}")
+    private int pageSize;
 
     private final ModelDao modelDao;
 
@@ -56,23 +55,19 @@ public class SyncDataServiceImpl implements SyncDataService {
     public <T> void syncTotal(DataModel<T> model) {
         log.info("- sync all data for model: {}", model.getTable());
 
-        //获取总数
-        long count = getCount(model);
-        log.info("- data count: {}", count);
-
-        if (count == 0) {
-            log.info("- {} data count = 0, return...", model.getTable());
-            return;
-        }
-
-        long totalPage = count / PAGE_SIZE + 1;
-
         //清空临时表
         clearTemporaryTable(model);
 
+        long totalPage = 1;
+
         //分批次加载数据到临时表：防止数据量过大内存溢出
         for (int i = 1; i <= totalPage; i++) {
-            List<T> dataList = extractAndTransform(model, i, PAGE_SIZE);
+            PageDto<T> page = extractAndTransform(model, i, pageSize);
+
+            List<T> dataList = page.getContent();
+            long count = page.getTotalElements();
+            totalPage = count / pageSize + 1;
+
             loadToTemporary(dataList, model);
         }
 
@@ -94,7 +89,7 @@ public class SyncDataServiceImpl implements SyncDataService {
     public <T> void syncDelta(DataModel<T> model, String message) {
         log.info("- sync delta for model: {}", model.getTable());
 
-
+        // TODO: 2021/1/8 增量同步
 
         log.info("- finish sync delta for model: {}", model.getTable());
     }
@@ -113,37 +108,6 @@ public class SyncDataServiceImpl implements SyncDataService {
         log.info("- finish create temp table...");
     }
 
-
-    /**
-     * rest调用分页查询数据，并转为entity
-     *
-     * @param model     模型
-     * @param page      页码
-     * @param size      分页大小
-     * @return          查询结果
-     */
-    private <T> List<T> extractAndTransform(DataModel<T> model, long page, long size) {
-        // TODO: 2021/1/6 数据查询并转换为pojo
-        String url = "http://localhost:8091/device/page?page={1}&size={2}";
-
-        ParameterizedTypeReference<List<T>> reference = getReference(model.getModelClass());
-        ResponseEntity<List<T>> responseEntity =
-                restTemplate.exchange(url, HttpMethod.GET, null, reference, page, size);
-
-        List<T> body = responseEntity.getBody();
-
-        return body;
-    }
-
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    private <T> ParameterizedTypeReference<List<T>> getReference(Class<T> clazz) {
-
-        //objectMapper已经缓存Type，不需要额外缓存
-        JavaType javaType = objectMapper.getTypeFactory().constructParametricType(List.class, clazz);
-
-        return ParameterizedTypeReference.forType(javaType);
-    }
 
 
     /**
@@ -205,17 +169,33 @@ public class SyncDataServiceImpl implements SyncDataService {
     }
 
 
+    /**
+     * rest调用分页查询数据，并转为entity
+     *
+     * @param model     模型
+     * @param page      页码
+     * @param size      分页大小
+     * @return          查询结果
+     */
+    private <T> PageDto<T> extractAndTransform(DataModel<T> model, long page, long size) {
+        // TODO: 2021/1/6 数据查询并转换为pojo
+        String url = "http://localhost:8091/device/page?page={1}&size={2}";
 
-    private <T> long getCount(DataModel<T> model) {
-        // TODO: 2021/1/6 查询数据个数
-        String url = "http://localhost:8091/device/count";
-        ResponseEntity<Long> responseEntity = restTemplate.getForEntity(url, Long.class);
+        ParameterizedTypeReference<PageDto<T>> reference = getReference(model.getModelClass());
+        ResponseEntity<PageDto<T>> responseEntity =
+                restTemplate.exchange(url, HttpMethod.GET, null, reference, page, size);
 
-        Long body = responseEntity.getBody();
-        if (Objects.isNull(body)) {
-            throw new RuntimeException("count is null");
-        }
-
-        return body;
+        return responseEntity.getBody();
     }
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    private <T> ParameterizedTypeReference<PageDto<T>> getReference(Class<T> clazz) {
+
+        //objectMapper已经缓存Type，不需要额外缓存
+        JavaType javaType = objectMapper.getTypeFactory().constructParametricType(PageDto.class, clazz);
+
+        return ParameterizedTypeReference.forType(javaType);
+    }
+
 }

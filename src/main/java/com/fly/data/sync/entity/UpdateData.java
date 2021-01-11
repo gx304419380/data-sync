@@ -2,6 +2,7 @@ package com.fly.data.sync.entity;
 
 import lombok.Data;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -17,6 +18,11 @@ public class UpdateData<T> {
     public UpdateData(List<T> data, List<T> oldData) {
         this.data = data;
         this.oldData = oldData;
+    }
+
+    public static <T> UpdateData<T> empty() {
+        List<T> emptyList = Collections.emptyList();
+        return new UpdateData<>(emptyList, emptyList);
     }
 
     public Boolean isNotEmpty() {

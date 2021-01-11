@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 import org.springframework.core.ResolvableType;
-import org.springframework.core.ResolvableTypeProvider;
 
 import java.util.List;
 

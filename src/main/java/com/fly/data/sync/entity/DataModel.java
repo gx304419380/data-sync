@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.fly.data.sync.constant.SyncConstant.*;
+import static com.fly.data.sync.constant.SyncSql.*;
 import static com.fly.data.sync.util.StringConverter.LOWER_CAMEL_UNDERSCORE;
 import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
 import static java.util.stream.Collectors.toList;
@@ -54,8 +55,25 @@ public class DataModel<T> {
 
     private BeanPropertyRowMapper<T> rowMapper;
 
+    private String insertSql;
+
+    private String queryAddSql;
+
+    private String addSql;
+
+    private String queryUpdateSql;
+
+    private String queryOldSql;
+
+    private String updateSql;
+
+    private String queryDeleteSql;
+
+    private String deleteSql;
+
 
     public DataModel(Class<T> modelClass) {
+
 
         String tableName = resolveTableName(modelClass);
 
@@ -100,6 +118,15 @@ public class DataModel<T> {
                 .filter(name -> !name.equals(id))
                 .map(name -> table + "." + name + "=" + tempTable + "." + name)
                 .collect(Collectors.joining(",", " ", " "));
+
+        this.insertSql = parseSql(INSERT_SQL);
+        this.queryAddSql = parseSql(QUERY_ADD_SQL);
+        this.addSql = parseSql(ADD_SQL);
+        this.queryUpdateSql = parseSql(QUERY_UPDATE_SQL);
+        this.queryOldSql = parseSql(QUERY_OLD_SQL);
+        this.updateSql = parseSql(UPDATE_SQL);
+        this.queryDeleteSql = parseSql(QUERY_DELETE_SQL);
+        this.deleteSql = parseSql(DELETE_SQL);
     }
 
 
@@ -185,6 +212,18 @@ public class DataModel<T> {
         }
 
         return LOWER_CAMEL_UNDERSCORE.convert(field.getName());
+    }
+
+    private String parseSql(String sql) {
+        return sql.replace("${id}", this.getId())
+                .replace("${table}", this.getTable())
+                .replace("${tempTable}", this.getTempTable())
+                .replace("${updateTime}", this.getUpdateTime())
+                .replace("${fieldList}", this.getFieldNameListString())
+                .replace("${propertyList}", this.getPropertyNameString())
+                .replace("${a.fieldList}", this.getFieldNameListStringWithPrefix("a"))
+                .replace("${b.fieldList}", this.getFieldNameListStringWithPrefix("b"))
+                .replace("${updateField}", this.getUpdateFieldString());
     }
 
 }
