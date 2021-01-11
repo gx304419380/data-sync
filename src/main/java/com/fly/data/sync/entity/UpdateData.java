@@ -25,7 +25,7 @@ public class UpdateData<T> {
         return new UpdateData<>(emptyList, emptyList);
     }
 
-    public Boolean isNotEmpty() {
+    public boolean isNotEmpty() {
         return data != null && !data.isEmpty();
     }
 

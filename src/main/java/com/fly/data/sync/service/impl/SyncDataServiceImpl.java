@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -184,16 +185,20 @@ public class SyncDataServiceImpl implements SyncDataService {
         ParameterizedTypeReference<PageDto<T>> reference = getReference(model.getModelClass());
         ResponseEntity<PageDto<T>> responseEntity =
                 restTemplate.exchange(url, HttpMethod.GET, null, reference, page, size);
+        PageDto<T> body = responseEntity.getBody();
+        if (Objects.isNull(body)) {
+            throw new RuntimeException();
+        }
 
-        return responseEntity.getBody();
+        return body;
     }
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private <T> ParameterizedTypeReference<PageDto<T>> getReference(Class<T> clazz) {
 
         //objectMapper已经缓存Type，不需要额外缓存
-        JavaType javaType = objectMapper.getTypeFactory().constructParametricType(PageDto.class, clazz);
+        JavaType javaType = OBJECT_MAPPER.getTypeFactory().constructParametricType(PageDto.class, clazz);
 
         return ParameterizedTypeReference.forType(javaType);
     }

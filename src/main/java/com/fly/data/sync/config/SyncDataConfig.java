@@ -1,14 +1,9 @@
 package com.fly.data.sync.config;
 
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.fly.data.sync.annotation.SyncIgnore;
 import com.fly.data.sync.annotation.SyncTable;
 import com.fly.data.sync.entity.DataModel;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -17,22 +12,18 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Nonnull;
 import javax.annotation.PostConstruct;
-import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static com.fly.data.sync.util.StringConverter.LOWER_CAMEL_UNDERSCORE;
-import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
 
 @Configuration
 @Slf4j
@@ -132,7 +123,8 @@ public class SyncDataConfig implements ApplicationContextAware {
 
         log.info("- begin to scan sync table class in package: {}", scanPackage);
 
-        ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false); // 不使用默认的TypeFilter
+        // 不使用默认的TypeFilter
+        ClassPathScanningCandidateComponentProvider provider = new ClassPathScanningCandidateComponentProvider(false);
         provider.addIncludeFilter(new AnnotationTypeFilter(SyncTable.class));
         Set<BeanDefinition> beanDefinitionSet = provider.findCandidateComponents(scanPackage);
 
@@ -184,7 +176,7 @@ public class SyncDataConfig implements ApplicationContextAware {
 
 
     @Override
-    public void setApplicationContext(@Nonnull ApplicationContext applicationContext) throws BeansException {
+    public void setApplicationContext(@Nonnull ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
     }
 }

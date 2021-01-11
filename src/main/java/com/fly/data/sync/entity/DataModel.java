@@ -79,7 +79,7 @@ public class DataModel<T> {
 
         Field[] fields = modelClass.getDeclaredFields();
 
-        List<Field> fieldList = Stream.of(fields)
+        this.fieldList = Stream.of(fields)
                 .filter(this::checkField)
                 .collect(Collectors.toList());
 
@@ -89,13 +89,13 @@ public class DataModel<T> {
                 .findFirst()
                 .orElse(ID_FIELD);
 
-        String updateTime = fieldList.stream()
+        this.updateTime = fieldList.stream()
                 .filter(f -> f.isAnnotationPresent(SyncUpdateTime.class))
                 .map(this::resolveTableField)
                 .findFirst()
                 .orElse(UPDATE_TIME_FIELD);
 
-        List<String> fieldNameList = fieldList.stream()
+        this.fieldNameList = fieldList.stream()
                 .map(this::resolveTableField)
                 .filter(StringUtils::isNotEmpty)
                 .collect(Collectors.toList());
@@ -107,10 +107,7 @@ public class DataModel<T> {
         this.id = idName;
         this.table = tableName;
         this.tempTable = tableName + TEMP_SUFFIX;
-        this.updateTime = updateTime;
-        this.fieldList = fieldList;
         this.modelClass = modelClass;
-        this.fieldNameList = fieldNameList;
         this.rowMapper = new BeanPropertyRowMapper<>(modelClass);
         this.fieldNameListString = String.join(",", fieldNameList);
         this.propertyNameString = ":" + String.join(",:", propertyList);

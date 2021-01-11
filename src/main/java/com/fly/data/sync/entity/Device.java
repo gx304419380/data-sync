@@ -1,8 +1,5 @@
 package com.fly.data.sync.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.fly.data.sync.annotation.SyncIgnore;
 import com.fly.data.sync.annotation.SyncTable;
 import lombok.Data;
 import org.springframework.data.relational.core.mapping.Table;

@@ -14,12 +14,16 @@ public class StringConverter {
     private StringConverter() {
     }
 
-    //大写驼峰转下划线
-    public static Converter<String, String> UPPER_CAMEL_UNDERSCORE =
+    /**
+     * 大写驼峰转下划线
+     */
+    public static final Converter<String, String> UPPER_CAMEL_UNDERSCORE =
             UPPER_CAMEL.converterTo(LOWER_UNDERSCORE);
 
-    //小写驼峰转下划线
-    public static Converter<String, String> LOWER_CAMEL_UNDERSCORE =
+    /**
+     * 小写驼峰转下划线
+     */
+    public static final Converter<String, String> LOWER_CAMEL_UNDERSCORE =
             LOWER_CAMEL.converterTo(LOWER_UNDERSCORE);
 
 }

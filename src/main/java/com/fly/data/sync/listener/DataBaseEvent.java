@@ -27,6 +27,7 @@ public class DataBaseEvent<T> implements ResolvableTypeProvider {
 
 
     public DataBaseEvent() {
+        //init event
     }
 
     @Override

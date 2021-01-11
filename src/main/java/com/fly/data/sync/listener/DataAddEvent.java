@@ -20,11 +20,8 @@ import java.util.List;
 @Accessors(chain = true)
 public class DataAddEvent<T> extends DataBaseEvent<T> {
 
-    {
-        this.operation = SyncOperation.ADD;
-    }
-
     public DataAddEvent(List<T> data, DataModel<T> dataModel) {
+        this.operation = SyncOperation.ADD;
         this.data = data;
         this.dataModel = dataModel;
     }
