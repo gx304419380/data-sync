@@ -1,4 +1,4 @@
-package com.fly.data.sync.listener;
+package com.fly.data.sync.constant;
 
 public enum SyncOperation {
     ADD,

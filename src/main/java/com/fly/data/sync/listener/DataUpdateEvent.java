@@ -1,12 +1,10 @@
 package com.fly.data.sync.listener;
 
+import com.fly.data.sync.constant.SyncOperation;
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.UpdateData;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import org.springframework.core.ResolvableType;
-
-import java.util.List;
 
 /**
  * @author guoxiang

@@ -1,5 +1,6 @@
 package com.fly.data.sync.listener;
 
+import com.fly.data.sync.constant.SyncEventSource;
 import lombok.Data;
 
 /**

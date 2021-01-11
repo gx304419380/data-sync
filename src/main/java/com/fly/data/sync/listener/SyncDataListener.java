@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.fly.data.sync.config.SyncDataConfig.getDataModel;
-import static com.fly.data.sync.listener.SyncEventSource.APPLICATION_START;
+import static com.fly.data.sync.constant.SyncEventSource.APPLICATION_START;
 
 @Component
 @Slf4j

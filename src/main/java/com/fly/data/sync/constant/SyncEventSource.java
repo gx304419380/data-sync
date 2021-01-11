@@ -1,4 +1,4 @@
-package com.fly.data.sync.listener;
+package com.fly.data.sync.constant;
 
 /**
  * 同步任务事件来源

@@ -1,5 +1,6 @@
 package com.fly.data.sync.listener;
 
+import com.fly.data.sync.constant.SyncOperation;
 import com.fly.data.sync.entity.DataModel;
 import lombok.Data;
 import org.springframework.core.ResolvableType;
