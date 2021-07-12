@@ -35,6 +35,14 @@ public class ModelDaoImpl implements ModelDao {
         String insertSql = model.getInsertSql();
 
         namedJdbcTemplate.batchUpdate(insertSql, SqlParameterSourceUtils.createBatch(dataList));
+
+        if (!model.isTombstone()) {
+            return;
+        }
+
+        String tombstone = model.getTombstoneField();
+        String table = model.getTable();
+        jdbcTemplate.update("update " + table + " set " + tombstone + "=0");
     }
 
     @Override

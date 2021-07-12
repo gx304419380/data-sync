@@ -25,7 +25,6 @@ public class DataBaseEvent<T> implements ResolvableTypeProvider {
     protected DataModel<T> dataModel;
 
 
-
     public DataBaseEvent() {
         //init event
     }

@@ -21,7 +21,7 @@ public class SyncSql {
             "where b.${id} is null";
 
     public static final String QUERY_UPDATE_SQL = "select ${a.fieldList} from ${tempTable} a " +
-            "left join ${table} b on a.${id} = b.${id} " +
+            "join ${table} b on a.${id} = b.${id} " +
             "where a.${updateTime} > b.${updateTime}";
 
     public static final String QUERY_OLD_SQL = "select ${b.fieldList} from ${tempTable} a " +

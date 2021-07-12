@@ -3,6 +3,7 @@ package com.fly.data.sync.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fly.data.sync.annotation.SyncTombstone;
 import com.fly.data.sync.annotation.SyncUpdateTime;
 import com.fly.data.sync.annotation.SyncIgnore;
 import com.fly.data.sync.annotation.SyncTable;
@@ -26,9 +27,14 @@ import static com.fly.data.sync.util.StringConverter.LOWER_CAMEL_UNDERSCORE;
 import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * @author guoxiang
+ * @version 1.0.0
+ * @since 2021/1/11
+ */
 @Data
 @Accessors(chain = true)
-@ToString(exclude = {"fieldList", "rowMapper"})
+@ToString(of = {"modelClass", "table", "id", "fieldNameList", "tombstone", "updateTime"})
 public class DataModel<T> {
 
     private Class<T> modelClass;
@@ -43,6 +49,14 @@ public class DataModel<T> {
 
     private String updateTime;
 
+    private String tombstoneField;
+
+    private boolean tombstone;
+
+    private String tombstoneDeleteValue;
+
+    private String tombstoneExistValue;
+
     private List<Field> fieldList;
 
     private List<String> fieldNameList;
@@ -56,6 +70,8 @@ public class DataModel<T> {
     private BeanPropertyRowMapper<T> rowMapper;
 
     private String insertSql;
+
+    private String tombstoneSql;
 
     private String queryAddSql;
 
@@ -83,7 +99,7 @@ public class DataModel<T> {
                 .filter(this::checkField)
                 .collect(Collectors.toList());
 
-        String idName = fieldList.stream()
+        this.id = fieldList.stream()
                 .filter(f -> f.isAnnotationPresent(TableId.class))
                 .map(this::resolveTableField)
                 .findFirst()
@@ -95,6 +111,13 @@ public class DataModel<T> {
                 .findFirst()
                 .orElse(UPDATE_TIME_FIELD);
 
+        fieldList.stream()
+                .filter(f -> f.isAnnotationPresent(SyncTombstone.class))
+                .findFirst()
+                .ifPresent(this::resolveTombstone);
+
+        this.tombstone = StringUtils.isNotEmpty(tombstoneField);
+
         this.fieldNameList = fieldList.stream()
                 .map(this::resolveTableField)
                 .filter(StringUtils::isNotEmpty)
@@ -104,7 +127,6 @@ public class DataModel<T> {
                 .map(Field::getName)
                 .collect(toList());
 
-        this.id = idName;
         this.table = tableName;
         this.tempTable = tableName + TEMP_SUFFIX;
         this.modelClass = modelClass;
@@ -211,6 +233,17 @@ public class DataModel<T> {
         return LOWER_CAMEL_UNDERSCORE.convert(field.getName());
     }
 
+    /**
+     * 解析tombstone注解
+     * @param field field
+     */
+    private void resolveTombstone(Field field) {
+        SyncTombstone syncTombstone = field.getAnnotation(SyncTombstone.class);
+        this.tombstoneField = resolveTableField(field);
+        this.tombstoneDeleteValue = syncTombstone.deleteValue();
+        this.tombstoneExistValue = syncTombstone.existValue();
+    }
+
     private String parseSql(String sql) {
         return sql.replace("${id}", this.getId())
                 .replace("${table}", this.getTable())
@@ -222,5 +255,6 @@ public class DataModel<T> {
                 .replace("${b.fieldList}", this.getFieldNameListStringWithPrefix("b"))
                 .replace("${updateField}", this.getUpdateFieldString());
     }
+
 
 }
