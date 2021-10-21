@@ -147,7 +147,7 @@ public class SyncDataListener {
     /**
      * 创建临时表
      *
-     * @param tableName 原始表名称
+     * @param table table name
      */
     private void createTempTable(String table) {
         syncDataService.createTempTableIfNotExist(table);

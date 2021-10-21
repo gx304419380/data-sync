@@ -67,6 +67,7 @@ public class SyncDataConfig implements ApplicationContextAware {
             INIT_LATCH.await();
         } catch (InterruptedException e) {
             log.error("- get model error:", e);
+            Thread.currentThread().interrupt();
         }
     }
 

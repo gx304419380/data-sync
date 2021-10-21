@@ -97,7 +97,7 @@ public class DataModel<T> {
 
         this.fieldList = Stream.of(fields)
                 .filter(this::checkField)
-                .collect(Collectors.toList());
+                .collect(toList());
 
         this.id = fieldList.stream()
                 .filter(f -> f.isAnnotationPresent(TableId.class))
@@ -121,7 +121,7 @@ public class DataModel<T> {
         this.fieldNameList = fieldList.stream()
                 .map(this::resolveTableField)
                 .filter(StringUtils::isNotEmpty)
-                .collect(Collectors.toList());
+                .collect(toList());
 
         List<String> propertyList = fieldList.stream()
                 .map(Field::getName)
