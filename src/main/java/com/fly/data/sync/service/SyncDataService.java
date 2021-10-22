@@ -9,8 +9,8 @@ import com.fly.data.sync.entity.UpdateData;
 import com.fly.data.sync.listener.DataAddEvent;
 import com.fly.data.sync.listener.DataDeleteEvent;
 import com.fly.data.sync.listener.DataUpdateEvent;
+import com.fly.data.sync.util.SyncCheck;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.ParameterizedTypeReference;
@@ -18,11 +18,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
-import java.util.Objects;
 
+/**
+ * Data sync service
+ * @author guoxiang
+ */
 @Service
 @Slf4j
 public class SyncDataService {
@@ -38,8 +42,8 @@ public class SyncDataService {
     private final RestTemplate restTemplate;
 
     public SyncDataService(ModelDao modelDao,
-                               RestTemplate restTemplate,
-                               ApplicationEventPublisher publisher) {
+                           RestTemplate restTemplate,
+                           ApplicationEventPublisher publisher) {
         this.modelDao = modelDao;
         this.publisher = publisher;
         this.restTemplate = restTemplate;
@@ -97,6 +101,7 @@ public class SyncDataService {
         try {
             // TODO: 2021/1/8 增量同步
 
+
         } finally {
             model.getDataLock().unlock();
         }
@@ -151,20 +156,20 @@ public class SyncDataService {
         log.debug("- load data to table for model: {}", model.getTable());
 
         //新增、修改、删除并将对应的数据返回
-        // TODO: 2021/1/7 这里会存在一个问题：数据量大内存溢出
+        //这里会存在一个问题：数据量大内存溢出
         List<T> addList = modelDao.add(model);
         List<T> deleteList = modelDao.delete(model);
         UpdateData<T> updateData = modelDao.update(model);
 
 
         //发射数据变更事件
-        if (CollectionUtils.isNotEmpty(addList)) {
+        if (SyncCheck.notEmpty(addList)) {
             log.info("- publish data add event, size = {}", addList.size());
             log.debug("- == add data = {}", addList);
             publisher.publishEvent(new DataAddEvent<>(addList, model));
         }
 
-        if (CollectionUtils.isNotEmpty(deleteList)) {
+        if (SyncCheck.notEmpty(deleteList)) {
             log.info("- publish data delete event, size = {}", deleteList.size());
             log.debug("- == delete data = {}", deleteList);
             publisher.publishEvent(new DataDeleteEvent<>(deleteList, model));
@@ -194,9 +199,7 @@ public class SyncDataService {
         ResponseEntity<PageDto<T>> responseEntity =
                 restTemplate.exchange(url, HttpMethod.GET, null, reference, page, size);
         PageDto<T> body = responseEntity.getBody();
-        if (Objects.isNull(body)) {
-            throw new RuntimeException();
-        }
+        Assert.notNull(body, "response is null");
 
         return body;
     }

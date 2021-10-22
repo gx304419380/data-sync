@@ -2,8 +2,8 @@ package com.fly.data.sync.config;
 
 import com.fly.data.sync.annotation.SyncTable;
 import com.fly.data.sync.entity.DataModel;
+import com.fly.data.sync.util.SyncCheck;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -81,7 +81,7 @@ public class SyncDataConfig implements ApplicationContextAware {
     @PostConstruct
     public void init() {
 
-        if (StringUtils.isEmpty(scanPackage)) {
+        if (SyncCheck.isEmpty(scanPackage)) {
             scanPackage = getDefaultPackage();
             log.warn("- data.sync.scan.package is empty, use default value: {}", scanPackage);
         }

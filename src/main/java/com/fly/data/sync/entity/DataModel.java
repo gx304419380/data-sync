@@ -7,10 +7,10 @@ import com.fly.data.sync.annotation.SyncTombstone;
 import com.fly.data.sync.annotation.SyncUpdateTime;
 import com.fly.data.sync.annotation.SyncIgnore;
 import com.fly.data.sync.annotation.SyncTable;
+import com.fly.data.sync.util.SyncCheck;
 import lombok.Data;
 import lombok.ToString;
 import lombok.experimental.Accessors;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -116,11 +116,11 @@ public class DataModel<T> {
                 .findFirst()
                 .ifPresent(this::resolveTombstone);
 
-        this.tombstone = StringUtils.isNotEmpty(tombstoneField);
+        this.tombstone = SyncCheck.notEmpty(tombstoneField);
 
         this.fieldNameList = fieldList.stream()
                 .map(this::resolveTableField)
-                .filter(StringUtils::isNotEmpty)
+                .filter(SyncCheck::notEmpty)
                 .collect(toList());
 
         List<String> propertyList = fieldList.stream()
@@ -180,7 +180,7 @@ public class DataModel<T> {
             tableName = tableAnnotation.value();
         }
 
-        if (StringUtils.isNotEmpty(tableName)) {
+        if (SyncCheck.notEmpty(tableName)) {
             return tableName;
         }
 
@@ -188,7 +188,7 @@ public class DataModel<T> {
         SyncTable syncTable = modelClass.getAnnotation(SyncTable.class);
         tableName = syncTable.value();
 
-        if (StringUtils.isNotEmpty(tableName)) {
+        if (SyncCheck.notEmpty(tableName)) {
             return tableName;
         }
 
@@ -226,7 +226,7 @@ public class DataModel<T> {
             fieldName = column.value();
         }
 
-        if (StringUtils.isNotEmpty(fieldName)) {
+        if (SyncCheck.notEmpty(fieldName)) {
             return fieldName;
         }
 

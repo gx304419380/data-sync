@@ -2,10 +2,10 @@ package com.fly.data.sync.dao;
 
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.UpdateData;
-import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
+import org.springframework.util.ObjectUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -49,7 +49,7 @@ public class ModelDao {
         String addSql = model.getAddSql();
 
         List<T> addList = jdbcTemplate.query(queryAddSql, model.getRowMapper());
-        if (CollectionUtils.isEmpty(addList)) {
+        if (ObjectUtils.isEmpty(addList)) {
             return Collections.emptyList();
         }
 
@@ -67,7 +67,7 @@ public class ModelDao {
         String updateSql = model.getUpdateSql();
 
         List<T> updateList = jdbcTemplate.query(queryUpdateSql, model.getRowMapper());
-        if (CollectionUtils.isEmpty(updateList)) {
+        if (ObjectUtils.isEmpty(updateList)) {
             return UpdateData.empty();
         }
 
@@ -86,7 +86,7 @@ public class ModelDao {
         String deleteSql = model.getDeleteSql();
 
         List<T> deleteList = jdbcTemplate.query(queryDeleteSql, model.getRowMapper());
-        if (CollectionUtils.isEmpty(deleteList)) {
+        if (ObjectUtils.isEmpty(deleteList)) {
             return Collections.emptyList();
         }
 
