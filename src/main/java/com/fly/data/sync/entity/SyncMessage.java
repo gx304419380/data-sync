@@ -20,7 +20,7 @@ public class SyncMessage<T> {
     /**
      * changed data's id list
      */
-    private List<String> idList;
+    private List<Object> idList;
 
     private List<T> data;
 }

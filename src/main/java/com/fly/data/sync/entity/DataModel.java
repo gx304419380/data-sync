@@ -62,50 +62,94 @@ public class DataModel<T> {
     /**
      * id property name
      */
-    private String id;
+    private String idColumn;
 
-    private String updateTime;
+    private String idField;
 
-    private String tombstoneField;
+    private String updateTimeColumn;
+
+    private String tombstoneColumn;
 
     private boolean tombstone;
 
-    private String tombstoneDeleteValue;
+    private String deletedValue;
 
-    private String tombstoneExistValue;
+    private String notDeletedValue;
 
     private List<Field> fieldList;
 
-    private List<String> fieldNameList;
+    private List<String> columnList;
 
-    private String fieldNameListString;
+    private String columnString;
 
-    private String propertyNameString;
+    private String fieldListString;
 
-    private String updateFieldString;
+    /**
+     * 全量更新sql
+     */
+    private String updateSetAllString;
+
+    /**
+     * 增量更新sql
+     */
+    private String updateSetDeltaString;
 
     private BeanPropertyRowMapper<T> rowMapper;
 
 
     // SQL Segment
 
+    /**
+     * 全量插入临时表
+     */
+    private String insertTempSql;
+
+    /**
+     * 插入普通表
+     */
     private String insertSql;
 
-    private String tombstoneSql;
-
+    /**
+     * 根据临时表比对查询新增数据
+     */
     private String queryAddSql;
 
+    /**
+     * 临时表比对插入
+     */
     private String addSql;
 
+    /**
+     * 根据临时表比对查询更新数据
+     */
     private String queryUpdateSql;
 
+    /**
+     * 查询更新前的数据
+     */
     private String queryOldSql;
 
-    private String updateSql;
+    /**
+     * 临时表比对更新
+     */
+    private String updateAllSql;
+
+    /**
+     * 增量更新，普通更新
+     */
+    private String updateDeltaSql;
 
     private String queryDeleteSql;
 
-    private String deleteSql;
+    /**
+     * 全量删除，比对临时表删除
+     */
+    private String deleteAllSql;
+
+    /**
+     * 增量删除，普通删除方法
+     */
+    private String deleteDeltaSql;
 
 
     public DataModel(Class<T> modelClass) {
@@ -119,13 +163,19 @@ public class DataModel<T> {
                 .filter(this::checkField)
                 .collect(toList());
 
-        this.id = fieldList.stream()
+        this.idField = fieldList.stream()
+                .filter(f -> f.isAnnotationPresent(TableId.class))
+                .map(Field::getName)
+                .findFirst()
+                .orElse(ID_FIELD);
+
+        this.idColumn = fieldList.stream()
                 .filter(f -> f.isAnnotationPresent(TableId.class))
                 .map(this::resolveTableField)
                 .findFirst()
                 .orElse(ID_FIELD);
 
-        this.updateTime = fieldList.stream()
+        this.updateTimeColumn = fieldList.stream()
                 .filter(f -> f.isAnnotationPresent(SyncUpdateTime.class))
                 .map(this::resolveTableField)
                 .findFirst()
@@ -136,9 +186,9 @@ public class DataModel<T> {
                 .findFirst()
                 .ifPresent(this::resolveTombstone);
 
-        this.tombstone = SyncCheck.notEmpty(tombstoneField);
+        this.tombstone = SyncCheck.notEmpty(tombstoneColumn);
 
-        this.fieldNameList = fieldList.stream()
+        this.columnList = fieldList.stream()
                 .map(this::resolveTableField)
                 .filter(SyncCheck::notEmpty)
                 .collect(toList());
@@ -150,26 +200,42 @@ public class DataModel<T> {
         this.tempTable = this.table + TEMP_SUFFIX;
         this.modelClass = modelClass;
         this.rowMapper = new BeanPropertyRowMapper<>(modelClass);
-        this.fieldNameListString = String.join(",", fieldNameList);
-        this.propertyNameString = ":" + String.join(",:", propertyList);
-        this.updateFieldString = fieldNameList.stream()
-                .filter(name -> !name.equals(id))
+        this.columnString = String.join(",", columnList);
+        this.fieldListString = ":" + String.join(",:", propertyList);
+        this.updateSetAllString = columnList.stream()
+                .filter(name -> !name.equals(idColumn))
                 .map(name -> table + "." + name + "=" + tempTable + "." + name)
                 .collect(Collectors.joining(",", " ", " "));
 
+        StringBuilder s = new StringBuilder("set ");
+        for (int i = 0; i < columnList.size(); i++) {
+            String column = columnList.get(i);
+            Field field = fieldList.get(i);
+            if (column.equals(idColumn)) {
+                continue;
+            }
+
+            s.append(column).append("=:").append(field.getName()).append(",");
+        }
+
+        this.updateSetDeltaString = s.substring(0, s.length() - 1);
+
+        this.insertTempSql = parseSql(INSERT_TEMP_SQL);
         this.insertSql = parseSql(INSERT_SQL);
         this.queryAddSql = parseSql(QUERY_ADD_SQL);
         this.addSql = parseSql(ADD_SQL);
         this.queryUpdateSql = parseSql(QUERY_UPDATE_SQL);
         this.queryOldSql = parseSql(QUERY_OLD_SQL);
-        this.updateSql = parseSql(UPDATE_SQL);
+        this.updateAllSql = parseSql(UPDATE_SQL);
+        this.updateDeltaSql = parseSql(UPDATE_DELTA_SQL);
         this.queryDeleteSql = parseSql(QUERY_DELETE_SQL);
-        this.deleteSql = parseSql(DELETE_SQL);
+        this.deleteAllSql = parseSql(DELETE_SQL);
+        this.deleteDeltaSql = parseSql(DELETE_DELTA_SQL);
     }
 
 
-    public String getFieldNameListStringWithPrefix(String prefix) {
-        return prefix + "." + String.join("," + prefix + ".", fieldNameList);
+    public String getColumnListWithPrefix(String prefix) {
+        return prefix + "." + String.join("," + prefix + ".", columnList);
     }
 
 
@@ -258,21 +324,22 @@ public class DataModel<T> {
      */
     private void resolveTombstone(Field field) {
         SyncTombstone syncTombstone = field.getAnnotation(SyncTombstone.class);
-        this.tombstoneField = resolveTableField(field);
-        this.tombstoneDeleteValue = syncTombstone.deleteValue();
-        this.tombstoneExistValue = syncTombstone.existValue();
+        this.tombstoneColumn = resolveTableField(field);
+        this.deletedValue = syncTombstone.deleteValue();
+        this.notDeletedValue = syncTombstone.existValue();
     }
 
     private String parseSql(String sql) {
-        return sql.replace("${id}", this.getId())
+        return sql.replace("${idColumn}", this.getIdColumn())
+                .replace("${idField}", this.getIdField())
                 .replace("${table}", this.getTable())
                 .replace("${tempTable}", this.getTempTable())
-                .replace("${updateTime}", this.getUpdateTime())
-                .replace("${fieldList}", this.getFieldNameListString())
-                .replace("${propertyList}", this.getPropertyNameString())
-                .replace("${a.fieldList}", this.getFieldNameListStringWithPrefix("a"))
-                .replace("${b.fieldList}", this.getFieldNameListStringWithPrefix("b"))
-                .replace("${updateField}", this.getUpdateFieldString());
+                .replace("${updateTime}", this.getUpdateTimeColumn())
+                .replace("${columnString}", this.getColumnString())
+                .replace("${fieldListString}", this.getFieldListString())
+                .replace("${a.columnList}", this.getColumnListWithPrefix("a"))
+                .replace("${b.columnList}", this.getColumnListWithPrefix("b"))
+                .replace("${updateField}", this.getUpdateSetAllString());
     }
 
 }

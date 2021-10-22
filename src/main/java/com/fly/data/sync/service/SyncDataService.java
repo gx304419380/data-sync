@@ -215,7 +215,7 @@ public class SyncDataService {
      * @param size      分页大小
      * @return          查询结果
      */
-    private <T> PageDto<T> extractAndTransform(DataModel<T> model, int page, int size) {
+    public <T> PageDto<T> extractAndTransform(DataModel<T> model, int page, int size) {
         return etlService.page(model, page, size);
     }
 

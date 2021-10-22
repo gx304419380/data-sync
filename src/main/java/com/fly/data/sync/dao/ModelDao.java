@@ -4,11 +4,16 @@ import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.UpdateData;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.util.ObjectUtils;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static com.fly.data.sync.util.SyncCheck.isEmpty;
 
 /**
  * @author guoxiang
@@ -29,7 +34,7 @@ public class ModelDao {
     
     public <T> void loadToTemp(List<T> dataList, DataModel<T> model) {
 
-        String insertSql = model.getInsertSql();
+        String insertSql = model.getInsertTempSql();
 
         namedJdbcTemplate.batchUpdate(insertSql, SqlParameterSourceUtils.createBatch(dataList));
 
@@ -37,9 +42,9 @@ public class ModelDao {
             return;
         }
 
-        String tombstone = model.getTombstoneField();
+        String tombstone = model.getTombstoneColumn();
         String table = model.getTable();
-        jdbcTemplate.update("update " + table + " set " + tombstone + "=0");
+        jdbcTemplate.update("update " + table + " set " + tombstone + "=" + model.getNotDeletedValue());
     }
 
     
@@ -64,7 +69,7 @@ public class ModelDao {
 
         String queryUpdateSql = model.getQueryUpdateSql();
         String queryOldSql = model.getQueryOldSql();
-        String updateSql = model.getUpdateSql();
+        String updateSql = model.getUpdateAllSql();
 
         List<T> updateList = jdbcTemplate.query(queryUpdateSql, model.getRowMapper());
         if (ObjectUtils.isEmpty(updateList)) {
@@ -83,7 +88,7 @@ public class ModelDao {
 
         String queryDeleteSql = model.getQueryDeleteSql();
 
-        String deleteSql = model.getDeleteSql();
+        String deleteSql = model.getDeleteAllSql();
 
         List<T> deleteList = jdbcTemplate.query(queryDeleteSql, model.getRowMapper());
         if (ObjectUtils.isEmpty(deleteList)) {
@@ -109,16 +114,33 @@ public class ModelDao {
     }
 
     public <T> void addDelta(DataModel<T> model, List<T> data) {
-        // TODO: 2021/10/22
+        String insertSql = model.getInsertSql();
+        SqlParameterSource[] batch = SqlParameterSourceUtils.createBatch(data);
+        namedJdbcTemplate.batchUpdate(insertSql, batch);
     }
 
-    public <T> List<T> deleteDelta(DataModel<T> model, List<String> idList) {
-        // TODO: 2021/10/22  
-        return null;
+    public <T> List<T> deleteDelta(DataModel<T> model, List<Object> idList) {
+        if (isEmpty(idList)) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Object> params = Collections.singletonMap("idList", idList);
+
+        String deleteSql = model.getDeleteDeltaSql();
+        String sql = "select * from " + model.getTable() + " where " + model.getIdColumn() + " in (:idList)";
+
+        List<T> data = namedJdbcTemplate.query(sql, params, model.getRowMapper());
+
+        List<Object[]> paramList = idList.stream().map(id -> new Object[]{id}).collect(Collectors.toList());
+        jdbcTemplate.batchUpdate(deleteSql, paramList);
+        return data;
     }
 
     public <T> UpdateData<T> updateDelta(DataModel<T> model, List<T> data) {
-        // TODO: 2021/10/22  
+        // TODO: 2021/10/22
+        if (isEmpty(data)) {
+            return UpdateData.empty();
+        }
         return null;
     }
 }
