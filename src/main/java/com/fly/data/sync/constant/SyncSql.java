@@ -34,7 +34,7 @@ public class SyncSql {
             "where ${table}.${idColumn} = ${tempTable}.${idColumn} " +
             "and ${table}.${updateTime} < ${tempTable}.${updateTime}";
 
-    public static final String UPDATE_DELTA_SQL = "update ${table} set ${updateSetString} where ${idColumn}=:${idField}";
+    public static final String UPDATE_DELTA_SQL = "update ${table} set ${updateSetDeltaString} where ${idColumn}=:${idField}";
 
     public static final String QUERY_DELETE_SQL = "select ${a.columnList} from ${table} a " +
             "left join ${tempTable} b on a.${idColumn} = b.${idColumn} " +

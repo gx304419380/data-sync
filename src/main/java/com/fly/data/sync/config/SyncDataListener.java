@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.fly.data.sync.constant.SyncEventSource.APPLICATION_START;
+import static com.fly.data.sync.util.SyncCheck.isEmpty;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -109,6 +110,10 @@ public class SyncDataListener {
         log.info("- create message listener for model: {}", tableName);
 
         DataModel<T> dataModel = syncDataContext.getDataModel(tableName);
+
+        if (isEmpty(dataModel.getQueue())) {
+            return;
+        }
 
         SimpleMessageListenerContainer container = containerFactory.createListenerContainer();
 

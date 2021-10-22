@@ -16,6 +16,8 @@ import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -157,9 +159,11 @@ public class DataModel<T> {
         this.table = resolveTableName(modelClass);
         this.queue = modelClass.getAnnotation(SyncTable.class).queue();
 
-        Field[] fields = modelClass.getDeclaredFields();
+        List<Field> fields = Arrays.stream(modelClass.getDeclaredFields())
+                .filter(f -> !Modifier.isStatic(f.getModifiers()))
+                .collect(toList());
 
-        this.fieldList = Stream.of(fields)
+        this.fieldList = fields.stream()
                 .filter(this::checkField)
                 .collect(toList());
 
@@ -339,7 +343,8 @@ public class DataModel<T> {
                 .replace("${fieldListString}", this.getFieldListString())
                 .replace("${a.columnList}", this.getColumnListWithPrefix("a"))
                 .replace("${b.columnList}", this.getColumnListWithPrefix("b"))
-                .replace("${updateField}", this.getUpdateSetAllString());
+                .replace("${updateSetString}", this.getUpdateSetAllString())
+                .replace("${updateSetDeltaString}", this.getUpdateSetDeltaString());
     }
 
 }

@@ -103,7 +103,7 @@ public class ModelDao {
 
     
     public <T> void deleteTemp(DataModel<T> model) {
-        jdbcTemplate.execute("delete * from " + model.getTempTable());
+        jdbcTemplate.execute("delete from " + model.getTempTable());
     }
 
 
