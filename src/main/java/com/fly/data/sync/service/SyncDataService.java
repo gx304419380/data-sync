@@ -1,25 +1,18 @@
 package com.fly.data.sync.service;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fly.data.sync.dao.ModelDao;
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.PageDto;
 import com.fly.data.sync.entity.UpdateData;
-import com.fly.data.sync.listener.DataAddEvent;
-import com.fly.data.sync.listener.DataDeleteEvent;
-import com.fly.data.sync.listener.DataUpdateEvent;
+import com.fly.data.sync.event.DataAddEvent;
+import com.fly.data.sync.event.DataDeleteEvent;
+import com.fly.data.sync.event.DataUpdateEvent;
 import com.fly.data.sync.util.SyncCheck;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.Assert;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
@@ -39,14 +32,13 @@ public class SyncDataService {
 
     private final ApplicationEventPublisher publisher;
 
-    private final RestTemplate restTemplate;
+    private final EtlService etlService;
 
-    public SyncDataService(ModelDao modelDao,
-                           RestTemplate restTemplate,
-                           ApplicationEventPublisher publisher) {
+
+    public SyncDataService(ModelDao modelDao, EtlService etlService, ApplicationEventPublisher publisher) {
         this.modelDao = modelDao;
         this.publisher = publisher;
-        this.restTemplate = restTemplate;
+        this.etlService = etlService;
     }
 
 
@@ -71,9 +63,9 @@ public class SyncDataService {
             for (int i = 1; i <= totalPage; i++) {
                 PageDto<T> page = extractAndTransform(model, i, pageSize);
 
-                List<T> dataList = page.getContent();
-                long count = page.getTotalElements();
-                totalPage = count / pageSize + 1;
+                List<T> dataList = page.getData();
+                long total = page.getTotal();
+                totalPage = total / pageSize + 1;
 
                 loadToTemporary(dataList, model);
             }
@@ -100,7 +92,7 @@ public class SyncDataService {
         model.getDataLock().lock();
         try {
             // TODO: 2021/1/8 增量同步
-
+            log.info("receive message for model: {}", message);
 
         } finally {
             model.getDataLock().unlock();
@@ -192,26 +184,7 @@ public class SyncDataService {
      * @return          查询结果
      */
     private <T> PageDto<T> extractAndTransform(DataModel<T> model, long page, long size) {
-        // TODO: 2021/1/6 数据查询并转换为pojo
-        String url = "http://localhost:8091/device/page?page={1}&size={2}";
-
-        ParameterizedTypeReference<PageDto<T>> reference = getReference(model.getModelClass());
-        ResponseEntity<PageDto<T>> responseEntity =
-                restTemplate.exchange(url, HttpMethod.GET, null, reference, page, size);
-        PageDto<T> body = responseEntity.getBody();
-        Assert.notNull(body, "response is null");
-
-        return body;
-    }
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-    private <T> ParameterizedTypeReference<PageDto<T>> getReference(Class<T> clazz) {
-
-        //objectMapper已经缓存Type，不需要额外缓存
-        JavaType javaType = OBJECT_MAPPER.getTypeFactory().constructParametricType(PageDto.class, clazz);
-
-        return ParameterizedTypeReference.forType(javaType);
+        return etlService.page(model.getTable(), page, size);
     }
 
 }

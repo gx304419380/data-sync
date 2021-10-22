@@ -1,37 +1,36 @@
-package com.fly.data.sync.listener;
+package com.fly.data.sync.event;
 
 import com.fly.data.sync.constant.SyncOperation;
 import com.fly.data.sync.entity.DataModel;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 import org.springframework.core.ResolvableType;
-import org.springframework.core.ResolvableTypeProvider;
 
 import java.util.List;
 
 /**
+ * 数据变更事件
  * @author guoxiang
  * @version 1.0.0
  * @since 2021/1/7
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class DataBaseEvent<T> implements ResolvableTypeProvider {
+@Accessors(chain = true)
+public class DataAddEvent<T> extends DataBaseEvent<T> {
 
-    protected SyncOperation operation;
-
-    protected List<T> data;
-
-    protected List<T> oldData;
-
-    protected DataModel<T> dataModel;
-
-
-    public DataBaseEvent() {
-        //init event
+    public DataAddEvent(List<T> data, DataModel<T> dataModel) {
+        this.operation = SyncOperation.ADD;
+        this.data = data;
+        this.dataModel = dataModel;
     }
+
 
     @Override
     public ResolvableType getResolvableType() {
         Class<T> dataClass  = dataModel.getModelClass();
+
         return ResolvableType.forClassWithGenerics(getClass(), ResolvableType.forClass(dataClass));
     }
 }

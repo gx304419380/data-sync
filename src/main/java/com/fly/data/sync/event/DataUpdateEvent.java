@@ -1,4 +1,4 @@
-package com.fly.data.sync.listener;
+package com.fly.data.sync.event;
 
 import com.fly.data.sync.constant.SyncOperation;
 import com.fly.data.sync.entity.DataModel;

@@ -25,6 +25,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
+/**
+ * sync data config
+ *
+ * @author guoxiang
+ */
 @Configuration
 @Slf4j
 @EnableAsync

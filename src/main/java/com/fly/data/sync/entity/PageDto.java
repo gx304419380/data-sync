@@ -12,12 +12,8 @@ import java.util.List;
 @Data
 public class PageDto<T> {
 
-    private List<T> content;
+    private List<T> data;
 
-    private Long totalElements;
-
-    private Long number;
-
-    private Long size;
+    private Long total;
 
 }

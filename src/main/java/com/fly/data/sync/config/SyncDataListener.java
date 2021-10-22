@@ -1,7 +1,8 @@
-package com.fly.data.sync.listener;
+package com.fly.data.sync.config;
 
-import com.fly.data.sync.config.SyncDataConfig;
 import com.fly.data.sync.entity.DataModel;
+import com.fly.data.sync.event.SyncAllEvent;
+import com.fly.data.sync.event.SyncEvent;
 import com.fly.data.sync.service.SyncDataService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -120,7 +121,7 @@ public class SyncDataListener {
 
         SimpleMessageListenerContainer container = containerFactory.createListenerContainer();
 
-        container.setQueueNames("test.queue");
+        container.setQueueNames(dataModel.getQueue());
         container.setMessageListener(message -> handleMessage(dataModel, message));
         container.start();
 

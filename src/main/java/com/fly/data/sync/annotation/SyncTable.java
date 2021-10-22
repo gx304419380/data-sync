@@ -12,6 +12,13 @@ import java.lang.annotation.*;
 @Target({ ElementType.TYPE })
 public @interface SyncTable {
 
+    /**
+     * @return table name
+     */
     String value() default "";
 
+    /**
+     * @return queue name
+     */
+    String queue() default "";
 }

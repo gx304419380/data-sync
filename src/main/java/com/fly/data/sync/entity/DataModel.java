@@ -34,17 +34,34 @@ import static java.util.stream.Collectors.toList;
  */
 @Data
 @Accessors(chain = true)
-@ToString(of = {"modelClass", "table", "id", "fieldNameList", "tombstone", "updateTime"})
+@ToString(of = {"modelClass", "table", "queue", "id", "fieldNameList", "tombstone", "updateTime"})
 public class DataModel<T> {
 
     private Class<T> modelClass;
 
+    /**
+     * lock used for data-sync
+     */
     private final ReentrantLock dataLock = new ReentrantLock();
 
+    /**
+     * table name
+     */
     private String table;
 
+    /**
+     * temp table name
+     */
     private String tempTable;
 
+    /**
+     * queue name
+     */
+    private String queue;
+
+    /**
+     * id property name
+     */
     private String id;
 
     private String updateTime;
@@ -90,8 +107,8 @@ public class DataModel<T> {
 
     public DataModel(Class<T> modelClass) {
 
-
-        String tableName = resolveTableName(modelClass);
+        this.table = resolveTableName(modelClass);
+        this.queue = modelClass.getAnnotation(SyncTable.class).queue();
 
         Field[] fields = modelClass.getDeclaredFields();
 
@@ -127,8 +144,7 @@ public class DataModel<T> {
                 .map(Field::getName)
                 .collect(toList());
 
-        this.table = tableName;
-        this.tempTable = tableName + TEMP_SUFFIX;
+        this.tempTable = this.table + TEMP_SUFFIX;
         this.modelClass = modelClass;
         this.rowMapper = new BeanPropertyRowMapper<>(modelClass);
         this.fieldNameListString = String.join(",", fieldNameList);
@@ -255,6 +271,5 @@ public class DataModel<T> {
                 .replace("${b.fieldList}", this.getFieldNameListStringWithPrefix("b"))
                 .replace("${updateField}", this.getUpdateFieldString());
     }
-
 
 }
