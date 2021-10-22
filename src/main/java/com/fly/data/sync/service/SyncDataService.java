@@ -160,7 +160,7 @@ public class SyncDataService {
                 publisher.publishEvent(new DataDeleteEvent<T>(deleteData, model));
                 break;
             case UPDATE:
-                UpdateData<T> updateData = modelDao.updateDelta(model, data);
+                UpdateData<T> updateData = modelDao.updateDelta(model, syncMessage.getIdList(), data);
                 publisher.publishEvent(new DataUpdateEvent<T>(updateData, model));
                 break;
             default:

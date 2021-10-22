@@ -136,11 +136,19 @@ public class ModelDao {
         return data;
     }
 
-    public <T> UpdateData<T> updateDelta(DataModel<T> model, List<T> data) {
-        // TODO: 2021/10/22
+    public <T> UpdateData<T> updateDelta(DataModel<T> model, List<Object> idList, List<T> data) {
         if (isEmpty(data)) {
             return UpdateData.empty();
         }
-        return null;
+
+        String sql = "select * from " + model.getTable() + " where " + model.getIdColumn() + " in (:idList)";
+
+        Map<String, Object> params = Collections.singletonMap("idList", idList);
+        List<T> oldData = namedJdbcTemplate.query(sql, params, model.getRowMapper());
+
+        String updateDeltaSql = model.getUpdateDeltaSql();
+        namedJdbcTemplate.batchUpdate(updateDeltaSql, SqlParameterSourceUtils.createBatch(data));
+
+        return new UpdateData<>(oldData, data);
     }
 }
