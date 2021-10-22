@@ -4,6 +4,7 @@ import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.event.SyncAllEvent;
 import com.fly.data.sync.event.SyncEvent;
 import com.fly.data.sync.service.SyncDataService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -14,7 +15,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.Lifecycle;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import javax.annotation.PreDestroy;
@@ -22,11 +22,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.fly.data.sync.config.SyncDataConfig.getDataModel;
 import static com.fly.data.sync.constant.SyncEventSource.APPLICATION_START;
 
-@Component
 @Slf4j
+@RequiredArgsConstructor
 public class SyncDataListener {
 
     private final ApplicationEventPublisher publisher;
@@ -35,18 +34,10 @@ public class SyncDataListener {
 
     private final SyncDataService syncDataService;
 
+    private final SyncDataContext syncDataContext;
+
     private final List<MessageListenerContainer> messageListenerContainerList = new ArrayList<>();
 
-
-
-    public SyncDataListener(SyncDataService syncDataService,
-                            ApplicationEventPublisher publisher,
-                            SimpleRabbitListenerContainerFactory containerFactory) {
-
-        this.containerFactory = containerFactory;
-        this.syncDataService = syncDataService;
-        this.publisher = publisher;
-    }
 
 
     /**
@@ -56,7 +47,7 @@ public class SyncDataListener {
     @Async
     public void onApplicationReadyForSync() {
         log.info("- on ApplicationReadyEvent for sync data...");
-        List<String> tableList = SyncDataConfig.getTableList();
+        List<String> tableList = syncDataContext.getTableList();
 
         if (tableList.isEmpty()) {
             log.info("- table list is empty, return now...");
@@ -83,10 +74,10 @@ public class SyncDataListener {
     public void onSyncAllEvent(SyncAllEvent event) {
         log.info("- on SyncAllEvent: {}", event);
 
-        List<String> tableList = SyncDataConfig.getTableList();
+        List<String> tableList = syncDataContext.getTableList();
 
         tableList.stream()
-                .map(SyncDataConfig::getDataModel)
+                .map(syncDataContext::getDataModel)
                 .forEach(syncDataService::syncTotal);
 
         log.info("- finish SyncAllEvent...");
@@ -117,7 +108,7 @@ public class SyncDataListener {
     private <T> void createMessageListener(String tableName) {
         log.info("- create message listener for model: {}", tableName);
 
-        DataModel<T> dataModel = getDataModel(tableName);
+        DataModel<T> dataModel = syncDataContext.getDataModel(tableName);
 
         SimpleMessageListenerContainer container = containerFactory.createListenerContainer();
 

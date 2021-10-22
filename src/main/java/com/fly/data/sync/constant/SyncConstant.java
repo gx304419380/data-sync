@@ -15,4 +15,7 @@ public class SyncConstant {
     public static final String ID_FIELD = "id";
     public static final String TEMP_SUFFIX = "_temp";
 
+    public static final String ADD = "ADD";
+    public static final String UPDATE = "UPDATE";
+    public static final String DELETE = "DELETE";
 }

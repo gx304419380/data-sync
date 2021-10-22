@@ -107,4 +107,18 @@ public class ModelDao {
         String sql = "create table if not exists " + table +"_temp like " + table;
         jdbcTemplate.execute(sql);
     }
+
+    public <T> void addDelta(DataModel<T> model, List<T> data) {
+        // TODO: 2021/10/22
+    }
+
+    public <T> List<T> deleteDelta(DataModel<T> model, List<String> idList) {
+        // TODO: 2021/10/22  
+        return null;
+    }
+
+    public <T> UpdateData<T> updateDelta(DataModel<T> model, List<T> data) {
+        // TODO: 2021/10/22  
+        return null;
+    }
 }

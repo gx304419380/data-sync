@@ -1,5 +1,6 @@
 package com.fly.data.sync.service;
 
+import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.PageDto;
 
 /**
@@ -12,11 +13,11 @@ public interface EtlService {
     /**
      * page search
      *
-     * @param table table name
+     * @param model data model
      * @param page  page
      * @param size  size
      * @param <T>   T
      * @return      page
      */
-    <T> PageDto<T> page(String table, long page, long size);
+    <T> PageDto<T> page(DataModel<T> model, int page, int size);
 }

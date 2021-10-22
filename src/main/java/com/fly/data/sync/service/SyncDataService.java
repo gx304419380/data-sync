@@ -3,24 +3,26 @@ package com.fly.data.sync.service;
 import com.fly.data.sync.dao.ModelDao;
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.PageDto;
+import com.fly.data.sync.entity.SyncMessage;
 import com.fly.data.sync.entity.UpdateData;
 import com.fly.data.sync.event.DataAddEvent;
 import com.fly.data.sync.event.DataDeleteEvent;
 import com.fly.data.sync.event.DataUpdateEvent;
 import com.fly.data.sync.util.SyncCheck;
+import com.fly.data.sync.util.SyncJsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
+import static com.fly.data.sync.constant.SyncConstant.*;
 
 /**
  * Data sync service
  * @author guoxiang
  */
-@Service
 @Slf4j
 public class SyncDataService {
 
@@ -88,17 +90,46 @@ public class SyncDataService {
      */
     @Transactional(rollbackFor = Exception.class)
     public <T> void syncDelta(DataModel<T> model, String message) {
-        log.info("- sync delta for model: {}", model.getTable());
+        log.info("- sync delta for model: {}, message: {}", model.getTable(), message);
         model.getDataLock().lock();
         try {
-            // TODO: 2021/1/8 增量同步
-            log.info("receive message for model: {}", message);
-
+            SyncMessage<T> syncMessage = SyncJsonUtils.toSyncMessage(message, model.getModelClass());
+            handleSyncMessage(model, syncMessage);
         } finally {
             model.getDataLock().unlock();
         }
 
         log.info("- finish sync delta for model: {}", model.getTable());
+    }
+
+
+    /**
+     * delta sync message handle
+     *
+     * @param model     model
+     * @param syncMessage   syncMessage
+     * @param <T>   <T>
+     */
+    private <T> void handleSyncMessage(DataModel<T> model, SyncMessage<T> syncMessage) {
+        String type = syncMessage.getType();
+        List<T> data = syncMessage.getData();
+
+        switch (type) {
+            case ADD:
+                modelDao.addDelta(model, data);
+                publisher.publishEvent(new DataAddEvent<T>(data, model));
+                break;
+            case DELETE:
+                List<T> deleteData = modelDao.deleteDelta(model, syncMessage.getIdList());
+                publisher.publishEvent(new DataDeleteEvent<T>(deleteData, model));
+                break;
+            case UPDATE:
+                UpdateData<T> updateData = modelDao.updateDelta(model, data);
+                publisher.publishEvent(new DataUpdateEvent<T>(updateData, model));
+                break;
+            default:
+                log.warn("not supported type: {}", type);
+        }
     }
 
 
@@ -183,8 +214,8 @@ public class SyncDataService {
      * @param size      分页大小
      * @return          查询结果
      */
-    private <T> PageDto<T> extractAndTransform(DataModel<T> model, long page, long size) {
-        return etlService.page(model.getTable(), page, size);
+    private <T> PageDto<T> extractAndTransform(DataModel<T> model, int page, int size) {
+        return etlService.page(model, page, size);
     }
 
 }
