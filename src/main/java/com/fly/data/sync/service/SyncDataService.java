@@ -102,6 +102,42 @@ public class SyncDataService {
         log.info("- finish sync delta for model: {}", model.getTable());
     }
 
+    /**
+     * 加载数据到主表
+     *
+     * @param model     数据模型
+     */
+    private <T> void loadToTable(DataModel<T> model) {
+        log.debug("- load data to table for model: {}", model.getTable());
+
+        //新增、修改、删除并将对应的数据返回
+        //这里会存在一个问题：数据量大内存溢出
+        List<T> addList = modelDao.add(model);
+        List<T> deleteList = modelDao.delete(model);
+        UpdateData<T> updateData = modelDao.update(model);
+
+
+        //发射数据变更事件
+        if (SyncCheck.notEmpty(addList)) {
+            log.info("- publish data add event, size = {}", addList.size());
+            log.debug("- == add data = {}", addList);
+            publisher.publishEvent(new DataAddEvent<>(addList, model));
+        }
+
+        if (SyncCheck.notEmpty(deleteList)) {
+            log.info("- publish data delete event, size = {}", deleteList.size());
+            log.debug("- == delete data = {}", deleteList);
+            publisher.publishEvent(new DataDeleteEvent<>(deleteList, model));
+        }
+
+        if (updateData.isNotEmpty()) {
+            log.info("- publish data update event, size = {}", updateData.size());
+            log.debug("- == update data = {}", updateData);
+            publisher.publishEvent(new DataUpdateEvent<>(updateData, model));
+        }
+    }
+
+
 
     /**
      * delta sync message handle
@@ -169,41 +205,6 @@ public class SyncDataService {
         modelDao.loadToTemp(dataList, model);
     }
 
-
-    /**
-     * 加载数据到主表
-     *
-     * @param model     数据模型
-     */
-    private <T> void loadToTable(DataModel<T> model) {
-        log.debug("- load data to table for model: {}", model.getTable());
-
-        //新增、修改、删除并将对应的数据返回
-        //这里会存在一个问题：数据量大内存溢出
-        List<T> addList = modelDao.add(model);
-        List<T> deleteList = modelDao.delete(model);
-        UpdateData<T> updateData = modelDao.update(model);
-
-
-        //发射数据变更事件
-        if (SyncCheck.notEmpty(addList)) {
-            log.info("- publish data add event, size = {}", addList.size());
-            log.debug("- == add data = {}", addList);
-            publisher.publishEvent(new DataAddEvent<>(addList, model));
-        }
-
-        if (SyncCheck.notEmpty(deleteList)) {
-            log.info("- publish data delete event, size = {}", deleteList.size());
-            log.debug("- == delete data = {}", deleteList);
-            publisher.publishEvent(new DataDeleteEvent<>(deleteList, model));
-        }
-
-        if (updateData.isNotEmpty()) {
-            log.info("- publish data update event, size = {}", updateData.size());
-            log.debug("- == update data = {}", updateData);
-            publisher.publishEvent(new DataUpdateEvent<>(updateData, model));
-        }
-    }
 
 
     /**

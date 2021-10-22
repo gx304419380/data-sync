@@ -139,7 +139,7 @@ public class SyncDataContext implements ApplicationContextAware {
             modelClass = (Class<T>) Class.forName(className);
         } catch (ClassNotFoundException e) {
             log.error("- cannot find class by name: {}", className);
-            throw new RuntimeException(e);
+            throw new IllegalStateException(e);
         }
 
         DataModel<T> model = new DataModel<>(modelClass);

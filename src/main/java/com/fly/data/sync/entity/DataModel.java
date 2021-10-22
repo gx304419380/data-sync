@@ -86,6 +86,9 @@ public class DataModel<T> {
 
     private BeanPropertyRowMapper<T> rowMapper;
 
+
+    // SQL Segment
+
     private String insertSql;
 
     private String tombstoneSql;
