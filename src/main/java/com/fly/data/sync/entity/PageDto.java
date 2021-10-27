@@ -12,7 +12,7 @@ import java.util.List;
 @Data
 public class PageDto<T> {
 
-    private List<T> data;
+    private List<T> records;
 
     private Long total;
 

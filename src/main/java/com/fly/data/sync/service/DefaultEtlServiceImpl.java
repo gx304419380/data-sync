@@ -2,7 +2,9 @@ package com.fly.data.sync.service;
 
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.PageDto;
+import com.fly.data.sync.entity.ResponseDto;
 import com.fly.data.sync.util.SyncJsonUtils;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
@@ -17,9 +19,10 @@ import org.springframework.web.client.RestTemplate;
  * @version 1.0.0
  * @since 2021/10/22
  */
+@RequiredArgsConstructor
 public class DefaultEtlServiceImpl implements EtlService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     @Value("${sync.data.url:}")
     private String url;
@@ -27,14 +30,16 @@ public class DefaultEtlServiceImpl implements EtlService {
     @Override
     public <T> PageDto<T> page(DataModel<T> model, int page, int size) {
 
-        ParameterizedTypeReference<PageDto<T>> type = SyncJsonUtils.getJavaType(PageDto.class, model.getModelClass());
+        ParameterizedTypeReference<ResponseDto<PageDto<T>>> type =
+                SyncJsonUtils.getJavaType(ResponseDto.class, PageDto.class, model.getModelClass());
 
-        ResponseEntity<PageDto<T>> responseEntity =
-                restTemplate.exchange(url, HttpMethod.GET, null, type, page, size);
+        ResponseEntity<ResponseDto<PageDto<T>>> responseEntity =
+                restTemplate.exchange(url, HttpMethod.GET, null, type, model.getTable(), page, size);
 
-        PageDto<T> body = responseEntity.getBody();
+        ResponseDto<PageDto<T>> body = responseEntity.getBody();
         Assert.notNull(body, "response is null" + responseEntity);
+        Assert.isTrue(body.getCode() == 0, "response error:" + body.getMsg());
 
-        return body;
+        return body.getData();
     }
 }

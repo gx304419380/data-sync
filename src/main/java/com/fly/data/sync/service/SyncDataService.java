@@ -65,7 +65,7 @@ public class SyncDataService {
             for (int i = 1; i <= totalPage; i++) {
                 PageDto<T> page = extractAndTransform(model, i, pageSize);
 
-                List<T> dataList = page.getData();
+                List<T> dataList = page.getRecords();
                 long total = page.getTotal();
                 totalPage = total / pageSize + 1;
 

@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * sync data config
@@ -26,8 +27,8 @@ public class SyncDataConfig {
 
     @Bean
     @ConditionalOnMissingBean(EtlService.class)
-    public EtlService etlService() {
-        return new DefaultEtlServiceImpl();
+    public EtlService etlService(RestTemplate restTemplate) {
+        return new DefaultEtlServiceImpl(restTemplate);
     }
 
     @Bean
