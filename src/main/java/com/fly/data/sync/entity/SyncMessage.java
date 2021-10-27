@@ -3,6 +3,7 @@ package com.fly.data.sync.entity;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author guoxiang
@@ -10,8 +11,9 @@ import java.util.List;
  * @since 2021/10/22
  */
 @Data
-public class SyncMessage<T> {
+public class SyncMessage {
 
+    private String table;
     /**
      * ADD DELETE UPDATE
      */
@@ -22,5 +24,5 @@ public class SyncMessage<T> {
      */
     private List<Object> idList;
 
-    private List<T> data;
+    private List<Object> data;
 }

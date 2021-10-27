@@ -11,5 +11,5 @@ import lombok.Data;
 public class ResponseDto<T> {
     private Integer code;
     private String msg;
-    private T data;
+    private PageDto<T> data;
 }

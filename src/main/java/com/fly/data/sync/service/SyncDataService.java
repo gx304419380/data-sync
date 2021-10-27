@@ -1,5 +1,6 @@
 package com.fly.data.sync.service;
 
+import com.fly.data.sync.config.SyncDataContext;
 import com.fly.data.sync.dao.ModelDao;
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.PageDto;
@@ -10,6 +11,7 @@ import com.fly.data.sync.event.DataDeleteEvent;
 import com.fly.data.sync.event.DataUpdateEvent;
 import com.fly.data.sync.util.SyncCheck;
 import com.fly.data.sync.util.SyncJsonUtils;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,6 +26,7 @@ import static com.fly.data.sync.constant.SyncConstant.*;
  * @author guoxiang
  */
 @Slf4j
+@RequiredArgsConstructor
 public class SyncDataService {
 
 
@@ -36,12 +39,7 @@ public class SyncDataService {
 
     private final EtlService etlService;
 
-
-    public SyncDataService(ModelDao modelDao, EtlService etlService, ApplicationEventPublisher publisher) {
-        this.modelDao = modelDao;
-        this.publisher = publisher;
-        this.etlService = etlService;
-    }
+    private final SyncDataContext syncDataContext;
 
 
     /**
@@ -85,15 +83,18 @@ public class SyncDataService {
 
     /**
      * 增量同步
-     * @param model     数据模型
      * @param message   消息
      */
     @Transactional(rollbackFor = Exception.class)
-    public <T> void syncDelta(DataModel<T> model, String message) {
-        log.info("- sync delta for model: {}, message: {}", model.getTable(), message);
+    public <T> void syncDelta(String message) {
+        log.info("- sync delta message: {}", message);
+        SyncMessage syncMessage = SyncJsonUtils.toBean(message, SyncMessage.class);
+
+        String table = syncMessage.getTable();
+        DataModel<T> model = syncDataContext.getDataModel(table);
+
         model.getDataLock().lock();
         try {
-            SyncMessage<T> syncMessage = SyncJsonUtils.toSyncMessage(message, model.getModelClass());
             handleSyncMessage(model, syncMessage);
         } finally {
             model.getDataLock().unlock();
@@ -146,9 +147,10 @@ public class SyncDataService {
      * @param syncMessage   syncMessage
      * @param <T>   <T>
      */
-    private <T> void handleSyncMessage(DataModel<T> model, SyncMessage<T> syncMessage) {
+    private <T> void handleSyncMessage(DataModel<T> model, SyncMessage syncMessage) {
         String type = syncMessage.getType();
-        List<T> data = syncMessage.getData();
+        List<Object> messageData = syncMessage.getData();
+        List<T> data = SyncJsonUtils.toList(messageData, model.getModelClass());
 
         switch (type) {
             case ADD:

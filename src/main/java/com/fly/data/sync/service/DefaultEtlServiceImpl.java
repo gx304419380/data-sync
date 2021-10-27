@@ -24,19 +24,19 @@ public class DefaultEtlServiceImpl implements EtlService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${sync.data.url:}")
+    @Value("${sync.data.url:http://bapp-mes-upms-biz/sync?table={1}&pageNo={2}&pageSize={3}}")
     private String url;
 
     @Override
     public <T> PageDto<T> page(DataModel<T> model, int page, int size) {
 
-        ParameterizedTypeReference<ResponseDto<PageDto<T>>> type =
-                SyncJsonUtils.getJavaType(ResponseDto.class, PageDto.class, model.getModelClass());
+        ParameterizedTypeReference<ResponseDto<T>> type =
+                SyncJsonUtils.getJavaType(ResponseDto.class, model.getModelClass());
 
-        ResponseEntity<ResponseDto<PageDto<T>>> responseEntity =
+        ResponseEntity<ResponseDto<T>> responseEntity =
                 restTemplate.exchange(url, HttpMethod.GET, null, type, model.getTable(), page, size);
 
-        ResponseDto<PageDto<T>> body = responseEntity.getBody();
+        ResponseDto<T> body = responseEntity.getBody();
         Assert.notNull(body, "response is null" + responseEntity);
         Assert.isTrue(body.getCode() == 0, "response error:" + body.getMsg());
 

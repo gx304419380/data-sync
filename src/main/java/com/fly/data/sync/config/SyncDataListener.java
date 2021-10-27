@@ -6,10 +6,11 @@ import com.fly.data.sync.event.SyncEvent;
 import com.fly.data.sync.service.SyncDataService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.listener.MessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.Lifecycle;
@@ -21,17 +22,26 @@ import javax.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static com.fly.data.sync.constant.SyncEventSource.APPLICATION_START;
-import static com.fly.data.sync.util.SyncCheck.isEmpty;
+import static com.fly.data.sync.util.SyncCheck.isBlank;
 
 @Slf4j
 @RequiredArgsConstructor
 public class SyncDataListener {
 
+    @Value("${sync.data.exchange:sync.data.exchange}")
+    private String exchangeName;
+
+    @Value("${sync.data.queue:}")
+    private String queueName;
+
     private final ApplicationEventPublisher publisher;
 
     private final SimpleRabbitListenerContainerFactory containerFactory;
+
+    private final AmqpAdmin rabbitAdmin;
 
     private final SyncDataService syncDataService;
 
@@ -56,7 +66,7 @@ public class SyncDataListener {
         }
 
         //创建消息监听器
-        tableList.forEach(this::createMessageListener);
+        createMessageListener();
 
         //创建临时表
         tableList.forEach(this::createTempTable);
@@ -103,22 +113,25 @@ public class SyncDataListener {
 
     /**
      * 创建消息监听器
-     *
-     * @param tableName     数据表名
      */
-    private <T> void createMessageListener(String tableName) {
-        log.info("- create message listener for model: {}", tableName);
+    private <T> void createMessageListener() {
+        log.info("- create message listener");
 
-        DataModel<T> dataModel = syncDataContext.getDataModel(tableName);
+        queueName = isBlank(queueName) ? "sync.data.queue." + UUID.randomUUID() : queueName;
 
-        if (isEmpty(dataModel.getQueue())) {
-            return;
-        }
+        //生成队列、交换机和绑定规则
+        Queue queue = new Queue(queueName);
+        FanoutExchange exchange = new FanoutExchange(exchangeName);
+        Binding binding = BindingBuilder.bind(queue).to(exchange);
+        rabbitAdmin.declareQueue(queue);
+        rabbitAdmin.declareExchange(exchange);
+        rabbitAdmin.declareBinding(binding);
 
+        //创建消息监听器
         SimpleMessageListenerContainer container = containerFactory.createListenerContainer();
 
-        container.setQueueNames(dataModel.getQueue());
-        container.setMessageListener(message -> handleMessage(dataModel, message));
+        container.setQueues(queue);
+        container.setMessageListener(this::handleMessage);
         container.start();
 
         messageListenerContainerList.add(container);
@@ -128,16 +141,15 @@ public class SyncDataListener {
     /**
      * 处理消息
      *
-     * @param dataModel     数据模型
      * @param message       消息
      */
-    private <T> void handleMessage(DataModel<T> dataModel, Message message) {
+    private <T> void handleMessage(Message message) {
         byte[] body = message.getBody();
-        log.info("- receive message, model: {}, message: {}", dataModel.getTable(), body);
+        log.info("- receive message {}", body);
 
         String json = new String(body, StandardCharsets.UTF_8);
 
-        syncDataService.syncDelta(dataModel, json);
+        syncDataService.syncDelta(json);
     }
 
 
@@ -152,11 +164,14 @@ public class SyncDataListener {
 
 
     /**
-     * 销毁消息监听器
+     * 销毁消息监听器和队列
      */
     @PreDestroy
     public void stopListenerList() {
         messageListenerContainerList.forEach(Lifecycle::stop);
+
+        rabbitAdmin.deleteQueue(queueName);
+
         log.info("- stop all message listeners...");
     }
 }

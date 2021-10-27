@@ -211,7 +211,7 @@ public class DataModel<T> {
                 .map(name -> table + "." + name + "=" + tempTable + "." + name)
                 .collect(Collectors.joining(",", " ", " "));
 
-        StringBuilder s = new StringBuilder("set ");
+        StringBuilder s = new StringBuilder();
         for (int i = 0; i < columnList.size(); i++) {
             String column = columnList.get(i);
             Field field = fieldList.get(i);

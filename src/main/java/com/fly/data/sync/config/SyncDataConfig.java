@@ -5,6 +5,7 @@ import com.fly.data.sync.service.DefaultEtlServiceImpl;
 import com.fly.data.sync.service.EtlService;
 import com.fly.data.sync.service.SyncDataService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEventPublisher;
@@ -45,16 +46,18 @@ public class SyncDataConfig {
     @Bean
     public SyncDataService syncDataService(ModelDao modelDao,
                                            EtlService etlService,
-                                           ApplicationEventPublisher publisher) {
-        return new SyncDataService(modelDao, etlService, publisher);
+                                           ApplicationEventPublisher publisher,
+                                           SyncDataContext syncDataContext) {
+        return new SyncDataService(modelDao, publisher, etlService, syncDataContext);
     }
 
     @Bean
     public SyncDataListener syncDataListener(ApplicationEventPublisher publisher,
                                              SimpleRabbitListenerContainerFactory containerFactory,
+                                             AmqpAdmin rabbitAdmin,
                                              SyncDataService syncDataService,
                                              SyncDataContext syncDataContext) {
-        return new SyncDataListener(publisher, containerFactory, syncDataService, syncDataContext);
+        return new SyncDataListener(publisher, containerFactory, rabbitAdmin, syncDataService, syncDataContext);
     }
 
 }
