@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -79,7 +80,7 @@ public class SyncJsonUtils {
     @SneakyThrows
     public static <T> List<T> toList(List<Object> list, Class<T> modelClass) {
         if (isEmpty(list)) {
-            return null;
+            return Collections.emptyList();
         }
 
         return list.stream().map(m -> MAPPER.convertValue(m, modelClass)).collect(Collectors.toList());
