@@ -1,6 +1,8 @@
 package com.fly.data.sync.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -10,6 +12,8 @@ import java.util.List;
  * @since 2021/10/22
  */
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class SyncMessage<T> {
 
     private String table;

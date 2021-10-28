@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static com.fly.data.sync.constant.SyncEventSource.APPLICATION_START;
-import static com.fly.data.sync.util.SyncCheck.isBlank;
+import static com.fly.data.sync.util.SyncCheck.notBlank;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -59,8 +59,8 @@ public class SyncDataListener {
 
     @PostConstruct
     public void init() {
-        configQueue = isBlank(queueName);
-        queueName = configQueue ? "sync.data.queue." + UUID.randomUUID() : queueName;
+        configQueue = notBlank(queueName);
+        queueName = configQueue ? queueName : "sync.data.queue." + UUID.randomUUID();
     }
 
 

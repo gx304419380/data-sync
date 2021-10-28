@@ -5,6 +5,7 @@ import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.PageDto;
 import com.fly.data.sync.entity.ResponseDto;
 import com.fly.data.sync.entity.SyncMessage;
+import com.fly.data.sync.util.SyncCheck;
 import com.fly.data.sync.util.SyncJsonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,12 +15,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.Assert;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toList;
 
 /**
  * default implementation
@@ -65,24 +65,24 @@ public class DefaultEtlServiceImpl implements EtlService {
         Map<String, Object> map = SyncJsonUtils.toMap(message);
 
         String table = (String) map.getOrDefault("table", "");
-        Assert.hasText(table, "table is null");
-
         String type = (String) map.getOrDefault("type", "");
-        Assert.hasText(type, "type is null");
+
+        List<Object> originalData = (List<Object>) map.getOrDefault("data", emptyList());
+        DataModel<T> model = syncDataContext.getDataModel(table);
+        Assert.notNull(model, "cannot find model for table: " + table);
+
+        List<T> data = SyncJsonUtils.toList(originalData, model.getModelClass());
 
         Object idListObject = map.getOrDefault("idList", emptyList());
         List<Object> idList = (List<Object>) idListObject;
 
-        List<Object> originalData = (List<Object>) map.getOrDefault("data", emptyList());
-        DataModel<T> model = syncDataContext.getDataModel(table);
-        List<T> data = SyncJsonUtils.toList(originalData, model.getModelClass());
+        if (SyncCheck.isEmpty(idList)) {
+            idList = originalData.stream()
+                    .map(o -> (Map<String, Object>)o)
+                    .map(m -> m.get(model.getIdField()))
+                    .collect(toList());
+        }
 
-        SyncMessage<T> syncMessage = new SyncMessage<>();
-        syncMessage.setTable(table);
-        syncMessage.setType(type);
-        syncMessage.setIdList(idList);
-        syncMessage.setData(data);
-
-        return syncMessage;
+        return new SyncMessage<>(table, type, idList, data);
     }
 }
