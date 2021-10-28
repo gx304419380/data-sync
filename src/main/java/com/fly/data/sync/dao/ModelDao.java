@@ -12,6 +12,7 @@ import org.springframework.util.ObjectUtils;
 import java.util.*;
 
 import static com.fly.data.sync.util.SyncCheck.isEmpty;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.*;
 
 /**
@@ -54,7 +55,7 @@ public class ModelDao {
 
         List<T> addList = jdbcTemplate.query(queryAddSql, model.getRowMapper());
         if (ObjectUtils.isEmpty(addList)) {
-            return Collections.emptyList();
+            return emptyList();
         }
 
         jdbcTemplate.update(addSql);
@@ -91,7 +92,7 @@ public class ModelDao {
 
         List<T> deleteList = jdbcTemplate.query(queryDeleteSql, model.getRowMapper());
         if (ObjectUtils.isEmpty(deleteList)) {
-            return Collections.emptyList();
+            return emptyList();
         }
 
         jdbcTemplate.update(deleteSql);
@@ -122,7 +123,7 @@ public class ModelDao {
      */
     public <T> List<T> getListById(DataModel<T> model, Collection<Object> idList) {
         if (isEmpty(idList)) {
-            return Collections.emptyList();
+            return emptyList();
         }
 
         Map<String, Object> params = Collections.singletonMap("idList", idList);
@@ -131,6 +132,7 @@ public class ModelDao {
 
         return namedJdbcTemplate.query(sql, params, model.getRowMapper());
     }
+
 
     /**
      * 增量增加
@@ -176,6 +178,7 @@ public class ModelDao {
         namedJdbcTemplate.batchUpdate(insertSql, batch);
     }
 
+
     /**
      * 根据id list删除
      *
@@ -185,6 +188,10 @@ public class ModelDao {
      * @return          被删除的数据
      */
     public <T> List<T> deleteDelta(DataModel<T> model, List<Object> idList) {
+        if(isEmpty(idList)) {
+            return emptyList();
+        }
+
         List<T> data = getListById(model, idList);
 
         List<Object[]> paramList = idList.stream().map(id -> new Object[]{id}).collect(toList());
@@ -192,6 +199,16 @@ public class ModelDao {
         return data;
     }
 
+
+    /**
+     * 更新数据
+     *
+     * @param model     model
+     * @param idList    idList
+     * @param data  data
+     * @param <T>   <T>
+     * @return      更新结果
+     */
     public <T> UpdateData<T> updateDelta(DataModel<T> model, Collection<Object> idList, List<T> data) {
         if (isEmpty(data)) {
             return UpdateData.empty();
