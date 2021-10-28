@@ -145,7 +145,7 @@ public class SyncDataListener {
      */
     private <T> void handleMessage(Message message) {
         byte[] body = message.getBody();
-        log.info("- receive message {}", body);
+        log.info("- receive message");
 
         String json = new String(body, StandardCharsets.UTF_8);
 

@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -30,7 +32,7 @@ import static com.fly.data.sync.constant.SyncConstant.*;
 public class SyncDataService {
 
 
-    @Value("${sync.data.page.size:100}")
+    @Value("${sync.data.page.size:400}")
     private int pageSize;
 
     private final ModelDao modelDao;
@@ -217,8 +219,14 @@ public class SyncDataService {
      * @param size      分页大小
      * @return          查询结果
      */
+    @Retryable(value = Exception.class, maxAttempts = 10, backoff = @Backoff(delay = 2000L, multiplier = 1.5))
     public <T> PageDto<T> extractAndTransform(DataModel<T> model, int page, int size) {
-        return etlService.page(model, page, size);
+        log.info("- get page from data center, page = {}, size = {}, table = {}", page, size, model.getTable());
+
+        PageDto<T> result = etlService.page(model, page, size);
+
+        log.debug("- result = {}", result);
+        return result;
     }
 
 }
