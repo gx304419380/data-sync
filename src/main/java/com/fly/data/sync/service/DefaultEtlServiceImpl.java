@@ -79,7 +79,7 @@ public class DefaultEtlServiceImpl implements EtlService {
         if (SyncCheck.isEmpty(idList)) {
             idList = originalData.stream()
                     .map(Map.class::cast)
-                    .map(m -> m.get(model.getIdField()))
+                    .map(m -> m.get(model.getIdFieldName()))
                     .collect(toList());
         }
 

@@ -3,10 +3,7 @@ package com.fly.data.sync.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fly.data.sync.annotation.SyncTombstone;
-import com.fly.data.sync.annotation.SyncUpdateTime;
-import com.fly.data.sync.annotation.SyncIgnore;
-import com.fly.data.sync.annotation.SyncTable;
+import com.fly.data.sync.annotation.*;
 import com.fly.data.sync.util.SyncCheck;
 import lombok.Data;
 import lombok.ToString;
@@ -19,9 +16,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.fly.data.sync.constant.SyncConstant.*;
 import static com.fly.data.sync.constant.SyncSql.*;
@@ -36,7 +33,7 @@ import static java.util.stream.Collectors.toList;
  */
 @Data
 @Accessors(chain = true)
-@ToString(of = {"modelClass", "table", "queue", "id", "fieldNameList", "tombstone", "updateTime"})
+@ToString(of = {"modelClass", "table", "queue", "idColumn", "columnList", "tombstone", "updateTimeColumn"})
 public class DataModel<T> {
 
     private Class<T> modelClass;
@@ -66,7 +63,9 @@ public class DataModel<T> {
      */
     private String idColumn;
 
-    private String idField;
+    private String idFieldName;
+
+    private Field idField;
 
     private String updateTimeColumn;
 
@@ -167,17 +166,14 @@ public class DataModel<T> {
                 .filter(this::checkField)
                 .collect(toList());
 
-        this.idField = fieldList.stream()
-                .filter(f -> f.isAnnotationPresent(TableId.class))
-                .map(Field::getName)
+        this.idField = fields.stream()
+                .filter(f -> f.isAnnotationPresent(SyncId.class) || f.isAnnotationPresent(TableId.class))
                 .findFirst()
-                .orElse(ID_FIELD);
+                .orElseThrow(IllegalStateException::new);
 
-        this.idColumn = fieldList.stream()
-                .filter(f -> f.isAnnotationPresent(TableId.class))
-                .map(this::resolveTableField)
-                .findFirst()
-                .orElse(ID_FIELD);
+        idField.setAccessible(true);
+        this.idFieldName = idField.getName();
+        this.idColumn = resolveTableField(idField);
 
         this.updateTimeColumn = fieldList.stream()
                 .filter(f -> f.isAnnotationPresent(SyncUpdateTime.class))
@@ -238,7 +234,21 @@ public class DataModel<T> {
     }
 
 
-    public String getColumnListWithPrefix(String prefix) {
+    /**
+     * 反射获取目标的id
+     *
+     * @param target 目标
+     * @return      id
+     */
+    public Object getIdOf(Object target) {
+        try {
+            return idField.get(target);
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("get id error", e);
+        }
+    }
+
+    private String getColumnListWithPrefix(String prefix) {
         return prefix + "." + String.join("," + prefix + ".", columnList);
     }
 
@@ -335,7 +345,7 @@ public class DataModel<T> {
 
     private String parseSql(String sql) {
         return sql.replace("${idColumn}", this.getIdColumn())
-                .replace("${idField}", this.getIdField())
+                .replace("${idField}", this.getIdFieldName())
                 .replace("${table}", this.getTable())
                 .replace("${tempTable}", this.getTempTable())
                 .replace("${updateTime}", this.getUpdateTimeColumn())

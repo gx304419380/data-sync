@@ -1,6 +1,7 @@
 package com.fly.data.sync.dao;
 
 import com.fly.data.sync.entity.DataModel;
+import com.fly.data.sync.entity.SaveOrUpdateResult;
 import com.fly.data.sync.entity.UpdateData;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -8,12 +9,10 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.core.namedparam.SqlParameterSourceUtils;
 import org.springframework.util.ObjectUtils;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
 
 import static com.fly.data.sync.util.SyncCheck.isEmpty;
+import static java.util.stream.Collectors.*;
 
 /**
  * @author guoxiang
@@ -113,38 +112,88 @@ public class ModelDao {
         jdbcTemplate.execute(sql);
     }
 
-    public <T> void addDelta(DataModel<T> model, List<T> data) {
-        String insertSql = model.getInsertSql();
-        SqlParameterSource[] batch = SqlParameterSourceUtils.createBatch(data);
-        namedJdbcTemplate.batchUpdate(insertSql, batch);
-    }
-
-    public <T> List<T> deleteDelta(DataModel<T> model, List<Object> idList) {
+    /**
+     * 根据id批量查询
+     *
+     * @param model     模型
+     * @param idList    id list
+     * @param <T>       泛型
+     * @return          list
+     */
+    public <T> List<T> getListById(DataModel<T> model, Collection<Object> idList) {
         if (isEmpty(idList)) {
             return Collections.emptyList();
         }
 
         Map<String, Object> params = Collections.singletonMap("idList", idList);
 
-        String deleteSql = model.getDeleteDeltaSql();
         String sql = "select * from " + model.getTable() + " where " + model.getIdColumn() + " in (:idList)";
 
-        List<T> data = namedJdbcTemplate.query(sql, params, model.getRowMapper());
+        return namedJdbcTemplate.query(sql, params, model.getRowMapper());
+    }
 
-        List<Object[]> paramList = idList.stream().map(id -> new Object[]{id}).collect(Collectors.toList());
-        jdbcTemplate.batchUpdate(deleteSql, paramList);
+    /**
+     * 增量增加
+     * @param model     模型
+     * @param idList    id列表
+     * @param data      数据
+     * @param <T>       泛型
+     */
+    public <T> SaveOrUpdateResult<T> saveOrUpdateDelta(DataModel<T> model, List<Object> idList, List<T> data) {
+        if (isEmpty(data)) {
+            return new SaveOrUpdateResult<>();
+        }
+
+        List<T> existList = getListById(model, idList);
+        Set<Object> existSet = existList.stream().map(model::getIdOf).collect(toSet());
+
+        Map<Boolean, List<T>> map = data.stream().collect(groupingBy(d -> existSet.contains(model.getIdOf(d))));
+
+        List<T> updateList = map.get(Boolean.TRUE);
+        List<T> addList = map.get(Boolean.FALSE);
+
+        insertDelta(model, addList);
+        UpdateData<T> updateData = updateDelta(model, existSet, updateList);
+
+        return new SaveOrUpdateResult<>(addList, updateData);
+    }
+
+
+    /**
+     * 批量插入
+     *
+     * @param model 模型
+     * @param data  数据
+     * @param <T>   泛型
+     */
+    public <T> void insertDelta(DataModel<T> model, List<T> data) {
+        String insertSql = model.getInsertSql();
+        SqlParameterSource[] batch = SqlParameterSourceUtils.createBatch(data);
+        namedJdbcTemplate.batchUpdate(insertSql, batch);
+    }
+
+    /**
+     * 根据id list删除
+     *
+     * @param model     模型
+     * @param idList    id list
+     * @param <T>       泛型
+     * @return          被删除的数据
+     */
+    public <T> List<T> deleteDelta(DataModel<T> model, List<Object> idList) {
+        List<T> data = getListById(model, idList);
+
+        List<Object[]> paramList = idList.stream().map(id -> new Object[]{id}).collect(toList());
+        jdbcTemplate.batchUpdate(model.getDeleteDeltaSql(), paramList);
         return data;
     }
 
-    public <T> UpdateData<T> updateDelta(DataModel<T> model, List<Object> idList, List<T> data) {
+    public <T> UpdateData<T> updateDelta(DataModel<T> model, Collection<Object> idList, List<T> data) {
         if (isEmpty(data)) {
             return UpdateData.empty();
         }
 
-        String sql = "select * from " + model.getTable() + " where " + model.getIdColumn() + " in (:idList)";
-
-        Map<String, Object> params = Collections.singletonMap("idList", idList);
-        List<T> oldData = namedJdbcTemplate.query(sql, params, model.getRowMapper());
+        List<T> oldData = getListById(model, idList);
 
         String updateDeltaSql = model.getUpdateDeltaSql();
         namedJdbcTemplate.batchUpdate(updateDeltaSql, SqlParameterSourceUtils.createBatch(data));

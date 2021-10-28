@@ -2,10 +2,7 @@ package com.fly.data.sync.service;
 
 import com.fly.data.sync.config.SyncDataContext;
 import com.fly.data.sync.dao.ModelDao;
-import com.fly.data.sync.entity.DataModel;
-import com.fly.data.sync.entity.PageDto;
-import com.fly.data.sync.entity.SyncMessage;
-import com.fly.data.sync.entity.UpdateData;
+import com.fly.data.sync.entity.*;
 import com.fly.data.sync.event.DataAddEvent;
 import com.fly.data.sync.event.DataDeleteEvent;
 import com.fly.data.sync.event.DataUpdateEvent;
@@ -156,16 +153,19 @@ public class SyncDataService {
 
         switch (message.getType()) {
             case ADD:
-                modelDao.addDelta(model, data);
-                publisher.publishEvent(new DataAddEvent<>(data, model));
+            case UPDATE:
+                SaveOrUpdateResult<T> result = modelDao.saveOrUpdateDelta(model, idList, data);
+                if (result.hasAddList()) {
+                    publisher.publishEvent(new DataAddEvent<>(result.getAddList(), model));
+                }
+
+                if (result.hasUpdateData()) {
+                    publisher.publishEvent(new DataUpdateEvent<>(result.getUpdateData(), model));
+                }
                 break;
             case DELETE:
                 List<T> deleteData = modelDao.deleteDelta(model, idList);
                 publisher.publishEvent(new DataDeleteEvent<>(deleteData, model));
-                break;
-            case UPDATE:
-                UpdateData<T> updateData = modelDao.updateDelta(model, idList, data);
-                publisher.publishEvent(new DataUpdateEvent<>(updateData, model));
                 break;
             default:
                 log.warn("not supported type: {}", message);
