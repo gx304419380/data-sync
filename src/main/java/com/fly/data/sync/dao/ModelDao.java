@@ -167,6 +167,10 @@ public class ModelDao {
      * @param <T>   泛型
      */
     public <T> void insertDelta(DataModel<T> model, List<T> data) {
+        if (isEmpty(data)) {
+            return;
+        }
+
         String insertSql = model.getInsertSql();
         SqlParameterSource[] batch = SqlParameterSourceUtils.createBatch(data);
         namedJdbcTemplate.batchUpdate(insertSql, batch);

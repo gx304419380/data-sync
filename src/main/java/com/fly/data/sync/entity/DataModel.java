@@ -13,14 +13,16 @@ import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static com.fly.data.sync.constant.SyncConstant.*;
+import static com.fly.data.sync.constant.SyncConstant.TEMP_SUFFIX;
+import static com.fly.data.sync.constant.SyncConstant.UPDATE_TIME_FIELD;
 import static com.fly.data.sync.constant.SyncSql.*;
 import static com.fly.data.sync.util.StringConverter.LOWER_CAMEL_UNDERSCORE;
 import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
@@ -66,6 +68,8 @@ public class DataModel<T> {
     private String idFieldName;
 
     private Field idField;
+
+    private Method getIdMethod;
 
     private String updateTimeColumn;
 
@@ -171,8 +175,13 @@ public class DataModel<T> {
                 .findFirst()
                 .orElseThrow(IllegalStateException::new);
 
-        idField.setAccessible(true);
         this.idFieldName = idField.getName();
+
+        this.getIdMethod = Arrays.stream(modelClass.getMethods())
+                .filter(m -> m.getName().equalsIgnoreCase("get" + idFieldName))
+                .findFirst()
+                .orElseThrow(IllegalStateException::new);
+
         this.idColumn = resolveTableField(idField);
 
         this.updateTimeColumn = fieldList.stream()
@@ -242,8 +251,8 @@ public class DataModel<T> {
      */
     public Object getIdOf(Object target) {
         try {
-            return idField.get(target);
-        } catch (IllegalAccessException e) {
+            return getIdMethod.invoke(target);
+        } catch (IllegalAccessException | InvocationTargetException e) {
             throw new IllegalStateException("get id error", e);
         }
     }
