@@ -3,7 +3,6 @@ package com.fly.data.sync.entity;
 import lombok.Data;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author guoxiang

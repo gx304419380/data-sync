@@ -114,7 +114,7 @@ public class SyncDataListener {
     /**
      * 创建消息监听器
      */
-    private <T> void createMessageListener() {
+    private void createMessageListener() {
         log.info("- create message listener");
 
         queueName = isBlank(queueName) ? "sync.data.queue." + UUID.randomUUID() : queueName;
@@ -143,7 +143,7 @@ public class SyncDataListener {
      *
      * @param message       消息
      */
-    private <T> void handleMessage(Message message) {
+    private void handleMessage(Message message) {
         byte[] body = message.getBody();
         log.info("- receive message");
 
