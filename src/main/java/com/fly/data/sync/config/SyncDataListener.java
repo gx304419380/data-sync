@@ -143,6 +143,7 @@ public class SyncDataListener {
 
         container.setQueues(queue);
         container.setMessageListener(this::handleMessage);
+        container.setDefaultRequeueRejected(false);
         container.start();
 
         messageListenerContainerList.add(container);
