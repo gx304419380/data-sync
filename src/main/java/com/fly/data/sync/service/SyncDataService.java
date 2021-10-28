@@ -157,15 +157,15 @@ public class SyncDataService {
         switch (message.getType()) {
             case ADD:
                 modelDao.addDelta(model, data);
-                publisher.publishEvent(new DataAddEvent<T>(data, model));
+                publisher.publishEvent(new DataAddEvent<>(data, model));
                 break;
             case DELETE:
                 List<T> deleteData = modelDao.deleteDelta(model, idList);
-                publisher.publishEvent(new DataDeleteEvent<T>(deleteData, model));
+                publisher.publishEvent(new DataDeleteEvent<>(deleteData, model));
                 break;
             case UPDATE:
                 UpdateData<T> updateData = modelDao.updateDelta(model, idList, data);
-                publisher.publishEvent(new DataUpdateEvent<T>(updateData, model));
+                publisher.publishEvent(new DataUpdateEvent<>(updateData, model));
                 break;
             default:
                 log.warn("not supported type: {}", message);
