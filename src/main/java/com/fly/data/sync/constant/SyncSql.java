@@ -23,16 +23,17 @@ public class SyncSql {
 
     public static final String QUERY_UPDATE_SQL = "select ${a.columnList} from ${tempTable} a " +
             "join ${table} b on a.${idColumn} = b.${idColumn} " +
-            "where a.${updateTime} > b.${updateTime}";
+            "where a.${updateTime} > b.${updateTime} or (a.${updateTime} is not null and b.${updateTime} is null)";
 
     public static final String QUERY_OLD_SQL = "select ${b.columnList} from ${tempTable} a " +
             "left join ${table} b on a.${idColumn} = b.${idColumn} " +
-            "where a.${updateTime} > b.${updateTime}";
+            "where a.${updateTime} > b.${updateTime} or (a.${updateTime} is not null and b.${updateTime} is null)";
 
     public static final String UPDATE_SQL = "update ${table}, ${tempTable} " +
             "set ${updateSetString} " +
             "where ${table}.${idColumn} = ${tempTable}.${idColumn} " +
-            "and ${table}.${updateTime} < ${tempTable}.${updateTime}";
+            "and ${table}.${updateTime} < ${tempTable}.${updateTime} " +
+            "or (${table}.${updateTime} is null and ${tempTable}.${updateTime} is not null)";
 
     public static final String UPDATE_DELTA_SQL = "update ${table} set ${updateSetDeltaString} where ${idColumn}=:${idField}";
 
