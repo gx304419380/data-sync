@@ -60,6 +60,7 @@ public class SyncDataListener {
     @PostConstruct
     public void init() {
         configQueue = isBlank(queueName);
+        queueName = configQueue ? "sync.data.queue." + UUID.randomUUID() : queueName;
     }
 
 
@@ -129,8 +130,6 @@ public class SyncDataListener {
     private void createMessageListener() {
         log.info("- create message listener");
 
-        queueName = configQueue ? "sync.data.queue." + UUID.randomUUID() : queueName;
-
         //生成队列、交换机和绑定规则
         Queue queue = new Queue(queueName);
         FanoutExchange exchange = new FanoutExchange(exchangeName);
@@ -185,6 +184,7 @@ public class SyncDataListener {
         //如果是随机队列，则删除
         if (!configQueue) {
             rabbitAdmin.deleteQueue(queueName);
+            log.info("- stop queue: {}", queueName);
         }
 
         log.info("- stop all message listeners...");
