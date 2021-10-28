@@ -18,6 +18,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -37,6 +38,13 @@ public class SyncDataListener {
     @Value("${sync.data.queue:}")
     private String queueName;
 
+    /**
+     * 是否定义了queue名称，
+     * 如果配置queue名称，
+     * 则项目停止后不关闭queue
+     */
+    private boolean configQueue;
+
     private final ApplicationEventPublisher publisher;
 
     private final SimpleRabbitListenerContainerFactory containerFactory;
@@ -49,6 +57,10 @@ public class SyncDataListener {
 
     private final List<MessageListenerContainer> messageListenerContainerList = new ArrayList<>();
 
+    @PostConstruct
+    public void init() {
+        configQueue = isBlank(queueName);
+    }
 
 
     /**
@@ -117,7 +129,7 @@ public class SyncDataListener {
     private void createMessageListener() {
         log.info("- create message listener");
 
-        queueName = isBlank(queueName) ? "sync.data.queue." + UUID.randomUUID() : queueName;
+        queueName = configQueue ? "sync.data.queue." + UUID.randomUUID() : queueName;
 
         //生成队列、交换机和绑定规则
         Queue queue = new Queue(queueName);
@@ -170,7 +182,10 @@ public class SyncDataListener {
     public void stopListenerList() {
         messageListenerContainerList.forEach(Lifecycle::stop);
 
-        rabbitAdmin.deleteQueue(queueName);
+        //如果是随机队列，则删除
+        if (!configQueue) {
+            rabbitAdmin.deleteQueue(queueName);
+        }
 
         log.info("- stop all message listeners...");
     }

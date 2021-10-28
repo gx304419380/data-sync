@@ -1,8 +1,10 @@
 package com.fly.data.sync.service;
 
+import com.fly.data.sync.config.SyncDataContext;
 import com.fly.data.sync.entity.DataModel;
 import com.fly.data.sync.entity.PageDto;
 import com.fly.data.sync.entity.ResponseDto;
+import com.fly.data.sync.entity.SyncMessage;
 import com.fly.data.sync.util.SyncJsonUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +13,13 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.Assert;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static java.util.Collections.emptyList;
 
 /**
  * default implementation
@@ -23,6 +32,8 @@ import org.springframework.web.client.RestTemplate;
 public class DefaultEtlServiceImpl implements EtlService {
 
     private final RestTemplate restTemplate;
+
+    private final SyncDataContext syncDataContext;
 
     @Value("${sync.data.url:http://bapp-mes-upms-biz/sync?table={1}&pageNo={2}&pageSize={3}}")
     private String url;
@@ -41,5 +52,37 @@ public class DefaultEtlServiceImpl implements EtlService {
         Assert.isTrue(body.getCode() == 0, "response error:" + body.getMsg());
 
         return body.getData();
+    }
+
+    /**
+     * @param message json字符串
+     * @param <T>   泛型
+     * @return      message
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> SyncMessage<T> convertMessage(String message) {
+        Map<String, Object> map = SyncJsonUtils.toMap(message);
+
+        String table = (String) map.getOrDefault("table", "");
+        Assert.hasText(table, "table is null");
+
+        String type = (String) map.getOrDefault("type", "");
+        Assert.hasText(type, "type is null");
+
+        Object idListObject = map.getOrDefault("idList", emptyList());
+        List<Object> idList = (List<Object>) idListObject;
+
+        List<Object> originalData = (List<Object>) map.getOrDefault("data", emptyList());
+        DataModel<T> model = syncDataContext.getDataModel(table);
+        List<T> data = SyncJsonUtils.toList(originalData, model.getModelClass());
+
+        SyncMessage<T> syncMessage = new SyncMessage<>();
+        syncMessage.setTable(table);
+        syncMessage.setType(type);
+        syncMessage.setIdList(idList);
+        syncMessage.setData(data);
+
+        return syncMessage;
     }
 }

@@ -10,7 +10,6 @@ import com.fly.data.sync.event.DataAddEvent;
 import com.fly.data.sync.event.DataDeleteEvent;
 import com.fly.data.sync.event.DataUpdateEvent;
 import com.fly.data.sync.util.SyncCheck;
-import com.fly.data.sync.util.SyncJsonUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -90,7 +89,8 @@ public class SyncDataService {
     @Transactional(rollbackFor = Exception.class)
     public <T> void syncDelta(String message) {
         log.info("- sync delta message: {}", message);
-        SyncMessage syncMessage = SyncJsonUtils.toBean(message, SyncMessage.class);
+
+        SyncMessage<T> syncMessage = etlService.convertMessage(message);
 
         String table = syncMessage.getTable();
         DataModel<T> model = syncDataContext.getDataModel(table);
@@ -146,29 +146,29 @@ public class SyncDataService {
      * delta sync message handle
      *
      * @param model     model
-     * @param syncMessage   syncMessage
+     * @param message   消息
      * @param <T>   <T>
      */
-    private <T> void handleSyncMessage(DataModel<T> model, SyncMessage syncMessage) {
-        String type = syncMessage.getType();
-        List<Object> messageData = syncMessage.getData();
-        List<T> data = SyncJsonUtils.toList(messageData, model.getModelClass());
+    private <T> void handleSyncMessage(DataModel<T> model, SyncMessage<T> message) {
 
-        switch (type) {
+        List<T> data = message.getData();
+        List<Object> idList = message.getIdList();
+
+        switch (message.getType()) {
             case ADD:
                 modelDao.addDelta(model, data);
                 publisher.publishEvent(new DataAddEvent<T>(data, model));
                 break;
             case DELETE:
-                List<T> deleteData = modelDao.deleteDelta(model, syncMessage.getIdList());
+                List<T> deleteData = modelDao.deleteDelta(model, idList);
                 publisher.publishEvent(new DataDeleteEvent<T>(deleteData, model));
                 break;
             case UPDATE:
-                UpdateData<T> updateData = modelDao.updateDelta(model, syncMessage.getIdList(), data);
+                UpdateData<T> updateData = modelDao.updateDelta(model, idList, data);
                 publisher.publishEvent(new DataUpdateEvent<T>(updateData, model));
                 break;
             default:
-                log.warn("not supported type: {}", type);
+                log.warn("not supported type: {}", message);
         }
     }
 

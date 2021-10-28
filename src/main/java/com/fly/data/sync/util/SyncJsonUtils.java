@@ -1,5 +1,6 @@
 package com.fly.data.sync.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,8 +22,10 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.fly.data.sync.util.SyncCheck.isBlank;
 import static com.fly.data.sync.util.SyncCheck.isEmpty;
 
 /**
@@ -37,6 +40,7 @@ public class SyncJsonUtils {
     private static final String TIME_PATTERN = "HH:mm:ss";
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
     static {
         // 初始化JavaTimeModule
         JavaTimeModule javaTimeModule = new JavaTimeModule();
@@ -84,5 +88,14 @@ public class SyncJsonUtils {
         }
 
         return list.stream().map(m -> MAPPER.convertValue(m, modelClass)).collect(Collectors.toList());
+    }
+
+    @SneakyThrows
+    public static Map<String, Object> toMap(String json) {
+        if (isBlank(json)) {
+            return Collections.emptyMap();
+        }
+        return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
+        });
     }
 }

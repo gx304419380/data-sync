@@ -10,7 +10,7 @@ import java.util.List;
  * @since 2021/10/22
  */
 @Data
-public class SyncMessage {
+public class SyncMessage<T> {
 
     private String table;
     /**
@@ -23,5 +23,5 @@ public class SyncMessage {
      */
     private List<Object> idList;
 
-    private List<Object> data;
+    private List<T> data;
 }

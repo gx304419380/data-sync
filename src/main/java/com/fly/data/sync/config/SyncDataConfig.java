@@ -29,15 +29,16 @@ import org.springframework.web.client.RestTemplate;
 public class SyncDataConfig {
 
     @Bean
-    @ConditionalOnMissingBean(EtlService.class)
-    public EtlService etlService(RestTemplate restTemplate) {
-        return new DefaultEtlServiceImpl(restTemplate);
-    }
-
-    @Bean
     public SyncDataContext syncDataContext() {
         return new SyncDataContext();
     }
+
+    @Bean
+    @ConditionalOnMissingBean(EtlService.class)
+    public EtlService etlService(RestTemplate restTemplate, SyncDataContext syncDataContext) {
+        return new DefaultEtlServiceImpl(restTemplate, syncDataContext);
+    }
+
 
     @Bean
     public ModelDao modelDao(JdbcTemplate jdbcTemplate,
