@@ -47,9 +47,10 @@ public class SyncDataService {
      */
     @Transactional(rollbackFor = Exception.class)
     public <T> void syncTotal(DataModel<T> model) {
-        log.info("- sync all data for model: {}", model.getTable());
 
         model.getDataLock().lock();
+
+        log.info("- sync all data for model: {}", model.getTable());
         try {
             //清空临时表
             clearTemporaryTable(model);
@@ -92,6 +93,7 @@ public class SyncDataService {
         DataModel<T> model = syncDataContext.getDataModel(table);
 
         model.getDataLock().lock();
+        log.info("- get lock success, begin to sync delta");
         try {
             handleSyncMessage(model, syncMessage);
         } finally {
