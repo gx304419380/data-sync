@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.util.Assert;
 import org.springframework.web.client.RestTemplate;
 
@@ -39,6 +41,7 @@ public class DefaultEtlServiceImpl implements EtlService {
     private String url;
 
     @Override
+    @Retryable(value = Exception.class, maxAttempts = 10, backoff = @Backoff(delay = 2000L, multiplier = 1.5))
     public <T> PageDto<T> page(DataModel<T> model, int page, int size) {
 
         ParameterizedTypeReference<ResponseDto<T>> type =

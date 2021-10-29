@@ -11,8 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -220,7 +218,6 @@ public class SyncDataService {
      * @param size      分页大小
      * @return          查询结果
      */
-    @Retryable(value = Exception.class, maxAttempts = 10, backoff = @Backoff(delay = 2000L, multiplier = 1.5))
     public <T> PageDto<T> extractAndTransform(DataModel<T> model, int page, int size) {
         log.info("- get page from data center, page = {}, size = {}, table = {}", page, size, model.getTable());
 
