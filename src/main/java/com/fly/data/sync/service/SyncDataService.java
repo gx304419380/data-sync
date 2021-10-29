@@ -50,7 +50,6 @@ public class SyncDataService {
         log.info("- sync all data for model: {}", model.getTable());
 
         model.getDataLock().lock();
-
         try {
             //清空临时表
             clearTemporaryTable(model);

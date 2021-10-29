@@ -10,7 +10,8 @@ public class SyncConstant {
     private SyncConstant() {
     }
 
-    public static final String UPDATE_TIME_FIELD = "update_time";
+    public static final String UPDATE_TIME_COLUMN = "update_time";
+    public static final String UPDATE_TIME_FIELD = "updateTime";
     public static final String TOMBSTONE_FIELD = "is_delete";
     public static final String ID_FIELD = "id";
     public static final String TEMP_SUFFIX = "_temp";

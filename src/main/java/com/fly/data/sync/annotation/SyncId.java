@@ -11,4 +11,9 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
 public @interface SyncId {
+
+    /**
+     * @return id column name
+     */
+    String value() default "";
 }

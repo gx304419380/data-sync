@@ -1,13 +1,11 @@
 package com.fly.data.sync.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import com.fly.data.sync.annotation.*;
 import com.fly.data.sync.util.SyncCheck;
 import lombok.Data;
 import lombok.ToString;
 import lombok.experimental.Accessors;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -21,11 +19,10 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static com.fly.data.sync.constant.SyncConstant.TEMP_SUFFIX;
-import static com.fly.data.sync.constant.SyncConstant.UPDATE_TIME_FIELD;
+import static com.fly.data.sync.constant.SyncConstant.*;
 import static com.fly.data.sync.constant.SyncSql.*;
-import static com.fly.data.sync.util.StringConverter.LOWER_CAMEL_UNDERSCORE;
-import static com.fly.data.sync.util.StringConverter.UPPER_CAMEL_UNDERSCORE;
+import static com.fly.data.sync.util.StringConverter.*;
+import static com.fly.data.sync.util.SyncCheck.notBlank;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -35,7 +32,7 @@ import static java.util.stream.Collectors.toList;
  */
 @Data
 @Accessors(chain = true)
-@ToString(of = {"modelClass", "table", "queue", "idColumn", "columnList", "tombstone", "updateTimeColumn"})
+@ToString(of = {"modelClass", "table", "idColumn", "columnList", "tombstone", "updateTimeColumn"})
 public class DataModel<T> {
 
     private Class<T> modelClass;
@@ -56,11 +53,6 @@ public class DataModel<T> {
     private String tempTable;
 
     /**
-     * queue name
-     */
-    private String queue;
-
-    /**
      * id property name
      */
     private String idColumn;
@@ -72,6 +64,8 @@ public class DataModel<T> {
     private Method getIdMethod;
 
     private String updateTimeColumn;
+
+    private String updateTimeField;
 
     private String tombstoneColumn;
 
@@ -160,7 +154,6 @@ public class DataModel<T> {
     public DataModel(Class<T> modelClass) {
 
         this.table = resolveTableName(modelClass);
-        this.queue = modelClass.getAnnotation(SyncTable.class).queue();
 
         List<Field> fields = Arrays.stream(modelClass.getDeclaredFields())
                 .filter(f -> !Modifier.isStatic(f.getModifiers()))
@@ -171,24 +164,26 @@ public class DataModel<T> {
                 .collect(toList());
 
         this.idField = fields.stream()
-                .filter(f -> f.isAnnotationPresent(SyncId.class) || f.isAnnotationPresent(TableId.class))
+                .filter(f -> f.isAnnotationPresent(SyncId.class))
                 .findFirst()
-                .orElseThrow(IllegalStateException::new);
+                .orElseThrow(() -> new IllegalStateException("cannot find id field of " + modelClass));
 
         this.idFieldName = idField.getName();
 
         this.getIdMethod = Arrays.stream(modelClass.getMethods())
                 .filter(m -> m.getName().equalsIgnoreCase("get" + idFieldName))
                 .findFirst()
-                .orElseThrow(IllegalStateException::new);
+                .orElseThrow(() -> new IllegalStateException("cannot find get id method of " + modelClass));
 
         this.idColumn = resolveTableField(idField);
 
-        this.updateTimeColumn = fieldList.stream()
+        Field updateTime = fieldList.stream()
                 .filter(f -> f.isAnnotationPresent(SyncUpdateTime.class))
-                .map(this::resolveTableField)
                 .findFirst()
-                .orElse(UPDATE_TIME_FIELD);
+                .orElseThrow(() -> new IllegalStateException("cannot find updateTime field of " + modelClass));
+
+        this.updateTimeField = updateTime.getName();
+        this.updateTimeColumn = resolveTableField(updateTime);
 
         fieldList.stream()
                 .filter(f -> f.isAnnotationPresent(SyncTombstone.class))
@@ -277,13 +272,8 @@ public class DataModel<T> {
 
         String tableName = null;
 
-        // mybatis plus annotation is prior
-        if (modelClass.isAnnotationPresent(TableName.class)) {
-            TableName tableNameAnnotation = modelClass.getAnnotation(TableName.class);
-            tableName = tableNameAnnotation.value();
-        }
         // spring data's annotation is checked then
-        else if (modelClass.isAnnotationPresent(Table.class)) {
+        if (modelClass.isAnnotationPresent(Table.class)) {
             Table tableAnnotation = modelClass.getAnnotation(Table.class);
             tableName = tableAnnotation.value();
         }
@@ -300,7 +290,7 @@ public class DataModel<T> {
             return tableName;
         }
 
-        return UPPER_CAMEL_UNDERSCORE.convert(modelClass.getSimpleName());
+        return toUnderscore(modelClass.getSimpleName());
     }
 
 
@@ -318,27 +308,27 @@ public class DataModel<T> {
 
         String fieldName = null;
 
-        //mybatis-plus注解优先
-        if (field.isAnnotationPresent(TableField.class)) {
-            TableField tableField = field.getAnnotation(TableField.class);
-            fieldName = tableField.value();
+        //SyncColumn注解优先
+        if (field.isAnnotationPresent(SyncColumn.class)) {
+            SyncColumn tableField = field.getAnnotation(SyncColumn.class);
+            fieldName = notBlank(tableField.value()) ? tableField.value() : null;
         }
-        //mybatis-plus注解TableId
-        else if (field.isAnnotationPresent(TableId.class)) {
-            TableId tableId = field.getAnnotation(TableId.class);
-            fieldName = tableId.value();
+        //SyncId 注解
+        else if (field.isAnnotationPresent(SyncId.class)) {
+            SyncId tableId = field.getAnnotation(SyncId.class);
+            fieldName = notBlank(tableId.value()) ? tableId.value() : null;
         }
         //spring data注解
-        else if (field.isAnnotationPresent(Column.class)) {
+        if (field.isAnnotationPresent(Column.class)) {
             Column column = field.getAnnotation(Column.class);
-            fieldName = column.value();
+            fieldName = notBlank(column.value()) ? column.value() : fieldName;
         }
 
         if (SyncCheck.notEmpty(fieldName)) {
             return fieldName;
         }
 
-        return LOWER_CAMEL_UNDERSCORE.convert(field.getName());
+        return toUnderscore(field.getName());
     }
 
     /**
@@ -358,6 +348,7 @@ public class DataModel<T> {
                 .replace("${table}", this.getTable())
                 .replace("${tempTable}", this.getTempTable())
                 .replace("${updateTime}", this.getUpdateTimeColumn())
+                .replace("${updateTimeField}", this.getUpdateTimeField())
                 .replace("${columnString}", this.getColumnString())
                 .replace("${fieldListString}", this.getFieldListString())
                 .replace("${a.columnList}", this.getColumnListWithPrefix("a"))

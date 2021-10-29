@@ -1,29 +1,23 @@
 package com.fly.data.sync.util;
 
-import com.google.common.base.Converter;
-
-import static com.google.common.base.CaseFormat.*;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import lombok.experimental.UtilityClass;
 
 /**
  * @author  guoxiang
  * @version 1.0
  * @since   20210101
  */
+@UtilityClass
 public class StringConverter {
 
-    private StringConverter() {
+    private static final SnakeCaseStrategy SNAKE_CASE_STRATEGY = new SnakeCaseStrategy();
+
+    /**
+     * 驼峰转下划线
+     */
+    public static String toUnderscore(String value) {
+        return SNAKE_CASE_STRATEGY.translate(value);
     }
-
-    /**
-     * 大写驼峰转下划线
-     */
-    public static final Converter<String, String> UPPER_CAMEL_UNDERSCORE =
-            UPPER_CAMEL.converterTo(LOWER_UNDERSCORE);
-
-    /**
-     * 小写驼峰转下划线
-     */
-    public static final Converter<String, String> LOWER_CAMEL_UNDERSCORE =
-            LOWER_CAMEL.converterTo(LOWER_UNDERSCORE);
 
 }

@@ -31,7 +31,7 @@ public class ModelDao {
         this.namedJdbcTemplate = namedParameterJdbcTemplate;
     }
 
-    
+
     public <T> void loadToTemp(List<T> dataList, DataModel<T> model) {
 
         String insertSql = model.getInsertTempSql();
@@ -47,7 +47,7 @@ public class ModelDao {
         jdbcTemplate.update("update " + table + " set " + tombstone + "=" + model.getNotDeletedValue());
     }
 
-    
+
     public <T> List<T> add(DataModel<T> model) {
 
         String queryAddSql = model.getQueryAddSql();
@@ -64,7 +64,7 @@ public class ModelDao {
     }
 
 
-    
+
     public <T> UpdateData<T> update(DataModel<T> model) {
 
         String queryUpdateSql = model.getQueryUpdateSql();
@@ -83,7 +83,7 @@ public class ModelDao {
     }
 
 
-    
+
     public <T> List<T> delete(DataModel<T> model) {
 
         String queryDeleteSql = model.getQueryDeleteSql();
@@ -101,13 +101,13 @@ public class ModelDao {
     }
 
 
-    
+
     public <T> void deleteTemp(DataModel<T> model) {
         jdbcTemplate.execute("delete from " + model.getTempTable());
     }
 
 
-    
+
     public void createTempTableIfNotExist(String table) {
         String sql = "create table if not exists " + table +"_temp like " + table;
         jdbcTemplate.execute(sql);
@@ -133,6 +133,28 @@ public class ModelDao {
         return namedJdbcTemplate.query(sql, params, model.getRowMapper());
     }
 
+    /**
+     * 查询已存在的id列表
+     *
+     * @param model     模型
+     * @param idList    id list
+     * @param <T>       泛型
+     * @return          id set
+     */
+    private <T> Set<Object> getExistIdSet(DataModel<T> model, List<Object> idList) {
+        if (isEmpty(idList)) {
+            return Collections.emptySet();
+        }
+
+        Map<String, Object> params = Collections.singletonMap("idList", idList);
+
+        String id = model.getIdColumn();
+        String sql = "select " + id + " from " + model.getTable() + " where " + id + " in (:idList)";
+
+        List<Object> result = namedJdbcTemplate.queryForList(sql, params, Object.class);
+        return new HashSet<>(result);
+    }
+
 
     /**
      * 增量增加
@@ -146,8 +168,7 @@ public class ModelDao {
             return new SaveOrUpdateResult<>();
         }
 
-        List<T> existList = getListById(model, idList);
-        Set<Object> existSet = existList.stream().map(model::getIdOf).collect(toSet());
+        Set<Object> existSet = getExistIdSet(model, idList);
 
         Map<Boolean, List<T>> map = data.stream().collect(groupingBy(d -> existSet.contains(model.getIdOf(d))));
 
@@ -159,6 +180,7 @@ public class ModelDao {
 
         return new SaveOrUpdateResult<>(addList, updateData);
     }
+
 
 
     /**

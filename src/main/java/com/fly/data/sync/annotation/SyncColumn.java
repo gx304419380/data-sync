@@ -7,14 +7,13 @@ import java.lang.annotation.*;
  * @version 1.0.0
  * @since 2021/1/8
  */
-@Inherited
+@Documented
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.TYPE })
-public @interface SyncTable {
+@Target(ElementType.FIELD)
+public @interface SyncColumn {
 
     /**
-     * @return table name
+     * @return column name
      */
     String value() default "";
-
 }

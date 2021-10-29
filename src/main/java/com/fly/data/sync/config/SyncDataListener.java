@@ -38,6 +38,10 @@ public class SyncDataListener {
     @Value("${sync.data.queue:}")
     private String queueName;
 
+    @Value("${sync.data.cluster: false}")
+    private boolean isCluster;
+
+
     /**
      * 是否定义了queue名称，
      * 如果配置queue名称，
@@ -130,6 +134,12 @@ public class SyncDataListener {
     private void createMessageListener() {
         log.info("- create message listener");
 
+        //判断当前节点是否是主节点，若不是，则退出
+        if (!isLeader()) {
+            return;
+        }
+
+
         //生成队列、交换机和绑定规则
         Queue queue = new Queue(queueName);
         FanoutExchange exchange = new FanoutExchange(exchangeName);
@@ -147,6 +157,22 @@ public class SyncDataListener {
         container.start();
 
         messageListenerContainerList.add(container);
+    }
+
+
+    /**
+     * 检测是否是主节点
+     *
+     * @return 是否
+     */
+    private boolean isLeader() {
+        if (!isCluster) {
+            return true;
+        }
+
+        // TODO: 2021/10/28 以后兼容多节点模式
+
+        return false;
     }
 
 
